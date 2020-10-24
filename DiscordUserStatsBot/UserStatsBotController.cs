@@ -185,9 +185,7 @@ namespace DiscordUserStatsBot
             //TODO: TEST
             if (command.Equals("prefix"))
             {
-
-                //7 6 +1 prefix t 8 6 + 1
-                //if nothing after prefix then print out prefix
+                //if nothing after prefix then print out prefix otherwise set the prefix to 1st character after space
                 if (message.Content.Length <= lengthOfCommand + 1)
                 {
                     message.Channel.SendMessageAsync($@"The command prefix for UserStat bot is {botCommandPrefix}");
@@ -195,7 +193,6 @@ namespace DiscordUserStatsBot
                 }
                 else
                 {
-                    //if something after "prefix" then if user has manage server permission then change prefix to 1st character after " "
                     ChangePrefixCommand(message);
                     Console.WriteLine("Set new prefix");
                 }
@@ -206,13 +203,24 @@ namespace DiscordUserStatsBot
             return Task.CompletedTask;
         }
 
-        [RequireUserPermissionAttribute(GuildPermission.ManageGuild)]
         private Task ChangePrefixCommand(SocketMessage message)
         {
-            int newPrefixIndex = message.Content.IndexOf(' ') + 1;
-            botCommandPrefix = message.Content.ToCharArray()[newPrefixIndex];
+            //only users who have manage guild permission can change the prefix
 
-            message.Channel.SendMessageAsync($@"The command prefix for UserStat bot has been set to {botCommandPrefix}");
+            //need to cast user to get var that tells me whether user can manage guild
+            SocketGuildUser userGuild = (SocketGuildUser)(message.Author);
+
+            if (userGuild.GuildPermissions.ManageGuild)
+            {
+                int newPrefixIndex = message.Content.IndexOf(' ') + 1;
+                botCommandPrefix = message.Content.ToCharArray()[newPrefixIndex];
+
+                message.Channel.SendMessageAsync($@"The command prefix for UserStat bot has been set to {botCommandPrefix}");
+            }
+            else
+            {
+                message.Channel.SendMessageAsync($@"Sorry, you need the Manage Guild permission in order to do this");
+            }
 
             return Task.CompletedTask;
         }
