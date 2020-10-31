@@ -3,7 +3,9 @@ using Discord.Commands;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace DiscordUserStatsBot
@@ -14,7 +16,7 @@ namespace DiscordUserStatsBot
         => new UserStatsBotController().MainAsync().GetAwaiter().GetResult();
 
 
-        //VARIABLES START
+        #region VARIABLES
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         private DiscordSocketClient client; //         <--------------------------------THIS IS YOUR REFERENCE TO EVERYTHING
@@ -33,18 +35,20 @@ namespace DiscordUserStatsBot
         private SocketVoiceChannel debugVoiceChannelRef;
 
         private char botCommandPrefix = '!';
+        private string ignoreAfterCommandString = "n0ll";
 
         //playerStatIndex: a dictionary with user ids as the key and a userStatIndex struct(?)
+        private Dictionary<ulong, UserStats> playerStatIndex;
+
+        UserStats beingProcessedUserStats;
+
+        //--------------------------------------------------------------------------------------------------------------------------------------------------------------- 
+        #endregion
 
 
+        #region FUNCTIONS
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
-        //VARIABLES END
-
-
-
-
-        //FUNCTIONS START
-        //---------------------------------------------------------------------------------------------------------------------------------------------------------------
+        #region InitFunctions
         public async Task MainAsync()
         {
             client = new DiscordSocketClient();
@@ -53,6 +57,7 @@ namespace DiscordUserStatsBot
             client.MessageReceived += CommandHandler;
             client.UserVoiceStateUpdated += VoiceChatChange;
             client.Ready += BotSetUp; //Ready is fired when the bot connects to server
+            client.Ready += DownloadUsers;
 
             //TODO:
             //_client.JoinedGuild += BotSetUp;
@@ -91,7 +96,11 @@ namespace DiscordUserStatsBot
                     //TODO: get the guild it just connected to and set as guildRef
                 }
 
+                
                 Console.WriteLine($"Set up new guild reference to {guildRef.Name}");
+
+                //set up user list
+                playerStatIndex = new Dictionary<ulong, UserStats>();
             }
 
             if (devMode)
@@ -101,47 +110,78 @@ namespace DiscordUserStatsBot
                 debugVoiceChannelRef = guildRef.GetVoiceChannel(TBE_DEBUG_VOICE_CHANNEL_ID);
             }
 
-
             return Task.CompletedTask;
         }
 
+        private Task Log(LogMessage msg)
+        {
+            Console.WriteLine(msg.ToString());
+            return Task.CompletedTask;
+        }
+
+        #endregion
+
+        #region VoiceChatFunctions
         private Task VoiceChatChange(SocketUser user, SocketVoiceState PreviousVoiceChat, SocketVoiceState CurrentVoiceChat)
         {
 
             if (CurrentVoiceChat.VoiceChannel != null)
             {
-                UserJoinedAVoiceChat(user);
+                UserJoinedAVoiceChat((SocketGuildUser)user);
             }
             else
             {
-                UserLeftAllVoiceChats(user);
+                UserLeftAllVoiceChats((SocketGuildUser)user);
             }
 
 
             return Task.CompletedTask;
         }
 
-        private void UserJoinedAVoiceChat(SocketUser user)
+        
+        private void UserJoinedAVoiceChat(SocketGuildUser guildUser)
         {
             //debugTextChannelRef.SendMessageAsync($"{user.Username} joined a chat!");
 
-            //If user doesn't have a userStat struct assossciated with them then create one and add it to the userStatIndex dictionary
-            //Record the time the player entered chat in their assossiated userStat struct
+            //Get User stat class
+            beingProcessedUserStats = GetOtherwiseCreateUserStats(guildUser);
+            //Record the time the player entered chat in their assossiated userStat class
+            beingProcessedUserStats.RecordGuildUserEnterVoiceChatTime();
 
         }
 
-        private void UserLeftAllVoiceChats(SocketUser user)
+        private void UserLeftAllVoiceChats(SocketGuildUser guildUser)
         {
-            //debugTextChannelRef.SendMessageAsync($"{user.Username} left all voice chats.");
+            //Get User stat class
+            beingProcessedUserStats = GetOtherwiseCreateUserStats(guildUser);
+            //Record the time the player entered chat in their assossiated userStat class
+            beingProcessedUserStats.RecordGuildUserLeaveVoiceChatTime();
+            //record how much time they were in chat
+            beingProcessedUserStats.CalculateAndUpdateUserStats();
+        }
+        #endregion
 
-            //If user doesn't have a userStat struct assossciated with them then create one and add it to the userStatIndex dictionary
-            //calculate amount of time player spent in voice and add it to their "totalTimeSpentInVoiceChat" stat in their assossciated userStat struct
+        private UserStats GetOtherwiseCreateUserStats(SocketGuildUser guildUser)
+        {
+            UserStats userStatInst;
 
+            //if user already in dictionary get their corresponding userStats class instance otherwise make one and add it to the dictionary
+            if (playerStatIndex.ContainsKey(guildUser.Id))
+            {
+                userStatInst = playerStatIndex[guildUser.Id];
+            }
+            else
+            {
+                userStatInst = new UserStats(guildUser);
+                playerStatIndex.Add(guildUser.Id, userStatInst);
+            }
+            return userStatInst;
         }
 
+        #region CommandFunctions
         private Task CommandHandler(SocketMessage message)          //REMEMBER ALL COMMANDS MUST BE LOWERCASE
         {
-            //FILTER OUT MESSAGES WE DONT WANT TO ANALYZE
+            #region MessageFilter
             //--------------------------------------------------------------------------------------------------
             //rule out messages that don't have bot prefix
             if (!message.Content.StartsWith(botCommandPrefix))                   //BOT PREFIX
@@ -157,8 +197,9 @@ namespace DiscordUserStatsBot
                 return Task.CompletedTask;
             }
             //--------------------------------------------------------------------------------------------------
+            #endregion
 
-            //GET LOWERCASE MESSAGE STRING
+            #region GetMessageCommandString
             //--------------------------------------------------------------------------------------------------
             string command = "";
             int lengthOfCommand = -1;
@@ -166,6 +207,7 @@ namespace DiscordUserStatsBot
             //Only will take first word of command
             if (message.Content.Contains(' '))
             {
+                //includes '!' in command length
                 lengthOfCommand = message.Content.IndexOf(' ');
             }
             else
@@ -177,33 +219,105 @@ namespace DiscordUserStatsBot
             command = message.Content.Substring(1, lengthOfCommand - 1).ToLower();
 
             //--------------------------------------------------------------------------------------------------
+            #endregion
 
             //COMMANDS 
-            //REMEMBER: NO SPACES ALLOWED IN COMMANDS
+            //REMEMBER: NO SPACES OR CAPITALS ALLOWED IN COMMANDS
             //--------------------------------------------------------------------------------------------------
 
-            //TODO: TEST
+            //COMMANDS HERE
+            //------------------------------------------
+            if (command.Equals("hi"))
+            {
+                message.Channel.SendMessageAsync("Hello fellow user.");
+                return Task.CompletedTask;
+            }
+            //------------------------------------------
+
+            //COMMANDS INVOLVING AFTER-COMMAND STRING HERE
+            //------------------------------------------
+            string stringAfterCommand = GetStringAfterCommand(message, lengthOfCommand).Result;
+
+            //TODO: TEST AGAIN
             if (command.Equals("prefix"))
             {
+                Console.WriteLine("Prefix command called");
                 //if nothing after prefix then print out prefix otherwise set the prefix to 1st character after space
-                if (message.Content.Length <= lengthOfCommand + 1)
+                if (stringAfterCommand.Equals(ignoreAfterCommandString))
                 {
                     message.Channel.SendMessageAsync($@"The command prefix for UserStat bot is {botCommandPrefix}");
                     Console.WriteLine("Told user prefix");
                 }
                 else
                 {
-                    ChangePrefixCommand(message);
+                    ChangePrefixCommand(message, stringAfterCommand);
                     Console.WriteLine("Set new prefix");
                 }
 
+                return Task.CompletedTask;
+
             }
 
-            //--------------------------------------------------------------------------------------------------
+            //get the total voice chat time of user
+            //!totalchattime <username#0000> AKA <tag> //OBSELETE: OR !totalchattime userID
+            if (command.Equals("totalchattime"))
+            {
+
+                guildRef.DownloadUsersAsync(); //TODO: Fix this
+
+                Console.WriteLine($@"Has all members? {guildRef.HasAllMembers}");
+
+                /*
+                //this will try and convert string to an int 32. Returns true or false based off of whether or not it fails
+                bool convertedToInt = Int32.TryParse(stringAfterCommand, out int userID);
+
+                //if converted to int and correct length (18 digits) is a userID
+                if (convertedToInt && stringAfterCommand.Length == 18)
+                {
+                    UserStats userStat = GetOtherwiseCreateUserStats(guildRef.GetUser((ulong)(userID)));
+
+                }
+                else 
+                */
+
+                if (stringAfterCommand.Contains('#'))
+                {
+                    //split username#0000 and do GetUser(username, #0000);
+                    int hashtagIndex = stringAfterCommand.IndexOf('#');
+                    string username = stringAfterCommand.Substring(0, hashtagIndex).Trim();
+                    string userDiscriminator = stringAfterCommand.Substring(hashtagIndex + 1, stringAfterCommand.Length - (hashtagIndex + 1)).Trim();
+
+
+                    if (client.GetUser(username, userDiscriminator) == null)
+                    {
+                        message.Channel.SendMessageAsync($@"Sorry that isn't a valid username#0000 or \userID.");
+                    }
+                    else
+                    {
+                        //in a roundabout way get guildUser userStats
+                        UserStats userStat = GetOtherwiseCreateUserStats((SocketGuildUser)(guildRef.GetUser(client.GetUser(username, userDiscriminator).Id)));
+
+                        message.Channel.SendMessageAsync($@"{username}'s total chat time is {userStat.TotalVoiceChatTime}!");
+                    }
+
+                    
+
+                }
+                else
+                {
+                    message.Channel.SendMessageAsync($@"Sorry that isn't a valid username#0000 or \userID. Maybe you misspelled it?");
+                }
+
+
+
+            }
+
+            //------------------------------------------
+
             return Task.CompletedTask;
         }
 
-        private Task ChangePrefixCommand(SocketMessage message)
+        private Task ChangePrefixCommand(SocketMessage message, string stringAfterCommand)
         {
             //only users who have manage guild permission can change the prefix
 
@@ -212,10 +326,16 @@ namespace DiscordUserStatsBot
 
             if (userGuild.GuildPermissions.ManageGuild)
             {
-                int newPrefixIndex = message.Content.IndexOf(' ') + 1;
-                botCommandPrefix = message.Content.ToCharArray()[newPrefixIndex];
-
-                message.Channel.SendMessageAsync($@"The command prefix for UserStat bot has been set to {botCommandPrefix}");
+                botCommandPrefix = stringAfterCommand[0];
+                if(stringAfterCommand.Length > 1)
+                {
+                    message.Channel.SendMessageAsync($@"The command prefix for UserStat bot has been set to the first character typed {botCommandPrefix}");
+                }
+                else
+                {
+                    message.Channel.SendMessageAsync($@"The command prefix for UserStat bot has been set to {botCommandPrefix}");
+                }
+                
             }
             else
             {
@@ -225,13 +345,25 @@ namespace DiscordUserStatsBot
             return Task.CompletedTask;
         }
 
-        private Task Log(LogMessage msg)
+        //returns " " if nothing there
+        private Task<string> GetStringAfterCommand(SocketMessage message, int lengthOfCommand)
         {
-            Console.WriteLine(msg.ToString());
-            return Task.CompletedTask;
+            string stringAfterCommand = ignoreAfterCommandString;
+
+            //if there is more content after the ' ' then set stringAfterCommand to that
+            //lengthOfCommand includes prefix character, +1 Accounts for a " " after command
+            if (message.Content.Length > lengthOfCommand + 1)
+            {
+                stringAfterCommand = message.Content.Substring(lengthOfCommand, message.Content.Length - (lengthOfCommand));
+            }
+
+            //Console.WriteLine($@"string after command is {stringAfterCommand}");
+
+            return Task<string>.FromResult(stringAfterCommand.Trim());
         }
+        #endregion
 
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
-        //FUNCTIONS END
+        #endregion
     }
 }
