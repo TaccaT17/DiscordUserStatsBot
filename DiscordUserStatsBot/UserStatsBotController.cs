@@ -24,7 +24,6 @@ namespace DiscordUserStatsBot
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         private DiscordSocketClient client; //         <--------------------------------THIS IS YOUR REFERENCE TO EVERYTHING
-        private DiscordRestClient restClient;
 
         private bool devMode = true;
 
@@ -43,9 +42,14 @@ namespace DiscordUserStatsBot
         private string ignoreAfterCommandString = "IACSn0ll";
 
         //playerStatIndex: a dictionary with user ids as the key and a userStatIndex struct(?)
-        private Dictionary<ulong, UserStats> playerStatIndex;
+        private Dictionary<ulong, UserStats> guildUserIDToStatIndex;
+        private Dictionary<string, ulong> guildUserNameToIDIndex;
 
         UserStats beingProcessedUserStats;
+
+        private event Func<SocketUser, Task> UserJoinedAVoiceChat;
+        private event Func<SocketUser, Task> UserLeftAllVoiceChats;
+
 
         //--------------------------------------------------------------------------------------------------------------------------------------------------------------- 
         #endregion
@@ -71,6 +75,9 @@ namespace DiscordUserStatsBot
             client.UserVoiceStateUpdated += VoiceChatChange;
             client.Ready += BotSetUp; //Ready is fired when the bot connects to server
             client.GuildMembersDownloaded += DownloadMessage;
+            client.MessageReceived += AddNewUserToStatBotIndex;
+            UserJoinedAVoiceChat += AddNewUserToStatBotIndex;
+
 
             //TODO:
             //client.JoinedGuild += BotSetUp;
@@ -114,7 +121,7 @@ namespace DiscordUserStatsBot
                 Console.WriteLine($"Set up new guild reference to {guildRef.Name}");
 
                 //set up user list
-                playerStatIndex = new Dictionary<ulong, UserStats>();
+                guildUserIDToStatIndex = new Dictionary<ulong, UserStats>();
             }
 
             if (devMode)
@@ -169,7 +176,7 @@ namespace DiscordUserStatsBot
             return Task.CompletedTask;
         }
 
-        
+        /*
         private void UserJoinedAVoiceChat(SocketGuildUser guildUser)
         {
             //Get User stat class
@@ -188,24 +195,8 @@ namespace DiscordUserStatsBot
             //record how much time they were in chat
             beingProcessedUserStats.CalculateAndUpdateUserStats();
         }
+        */
         #endregion
-
-        private UserStats GetOtherwiseCreateUserStats(SocketGuildUser guildUser)
-        {
-            UserStats userStatInst;
-
-            //if user already in dictionary get their corresponding userStats class instance otherwise make one and add it to the dictionary
-            if (playerStatIndex.ContainsKey(guildUser.Id))
-            {
-                userStatInst = playerStatIndex[guildUser.Id];
-            }
-            else
-            {
-                userStatInst = new UserStats(guildUser);
-                playerStatIndex.Add(guildUser.Id, userStatInst);
-            }
-            return userStatInst;
-        }
 
         #region CommandFunctions
         private Task CommandHandler(SocketMessage message)          //REMEMBER ALL COMMANDS MUST BE LOWERCASE
@@ -315,24 +306,25 @@ namespace DiscordUserStatsBot
                 {
                     //split username#0000 and do GetUser(username, #0000);
                     int hashtagIndex = stringAfterCommand.IndexOf('#');
-                    string username = stringAfterCommand.Substring(0, hashtagIndex).Trim();
+                    string usernameMinusDiscrim = stringAfterCommand.Substring(0, hashtagIndex).Trim();
                     string userDiscriminator = stringAfterCommand.Substring(hashtagIndex + 1, stringAfterCommand.Length - (hashtagIndex + 1)).Trim();
+                    //to get rid of any space between username and discriminator
+                    string fullUserName = usernameMinusDiscrim + userDiscriminator;
 
-                    if (client.GetUser(username, userDiscriminator) == null)
+                    UserStats tempUserStat = GetUserStats(fullUserName);
+
+                    if (fullUserName == null)
                     {
-                        message.Channel.SendMessageAsync($@"Sorry that isn't a valid username#0000 or \userID.");
+                        message.Channel.SendMessageAsync($@"Sorry there is no data on {fullUserName}. Maybe you misspelled it?");
                     }
                     else
                     {
-                        //in a roundabout way get guildUser userStats
-                        UserStats userStat = GetOtherwiseCreateUserStats((SocketGuildUser)(guildRef.GetUser(client.GetUser(username, userDiscriminator).Id)));
-
-                        message.Channel.SendMessageAsync($@"{username}'s total chat time is {userStat.TotalVoiceChatTime}!");
+                        message.Channel.SendMessageAsync($@"{usernameMinusDiscrim}'s total chat time is {tempUserStat.TotalVoiceChatTime}!");
                     }
                 }
                 else
                 {
-                    message.Channel.SendMessageAsync($@"Sorry that isn't a valid username#0000 or \userID. Maybe you misspelled it?");
+                    message.Channel.SendMessageAsync($@"Sorry that isn't a valid username#0000. Did you remember the discriminator?");
                 }
             }
             //------------------------------------------
@@ -383,6 +375,47 @@ namespace DiscordUserStatsBot
             return Task<string>.FromResult(stringAfterCommand.Trim());
         }
         #endregion
+
+
+        private Task AddNewUserToStatBotIndex(SocketUser user)
+        {
+            //if user not already in playerNameIndex
+            if (!guildUserNameToIDIndex.ContainsKey(((SocketGuildUser)user).Username))
+            {   
+                //add them
+                guildUserNameToIDIndex.Add((((SocketGuildUser)user).Username), user.Id);
+                //make them a UserStat class instance and store it
+                guildUserIDToStatIndex.Add(user.Id, new UserStats((SocketGuildUser)user));
+
+                Console.WriteLine($@"Created a new userStat for {((SocketGuildUser)user).Username}");
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private Task AddNewUserToStatBotIndex(SocketMessage message)
+        {
+            AddNewUserToStatBotIndex(message.Author);
+            return Task.CompletedTask;
+        }
+
+        //returns null if no user in the dictionary
+        private UserStats GetUserStats(string guildUserName)
+        {
+            UserStats userStatInst = null;
+
+            //if user in guildUserNameIndex
+            if (guildUserNameToIDIndex.ContainsKey(guildUserName))
+            {
+                userStatInst = guildUserIDToStatIndex[guildUserNameToIDIndex[guildUserName]];
+            }
+            else
+            {
+                Console.WriteLine("The bot has no recording of a user with that name");
+            }
+
+            return userStatInst;
+        }
 
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion
