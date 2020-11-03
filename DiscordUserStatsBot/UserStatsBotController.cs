@@ -1,11 +1,15 @@
 ﻿using Discord;
 using Discord.Commands;
+using Discord.Net.Queue;
+using Discord.Rest;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DiscordUserStatsBot
@@ -20,6 +24,7 @@ namespace DiscordUserStatsBot
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         private DiscordSocketClient client; //         <--------------------------------THIS IS YOUR REFERENCE TO EVERYTHING
+        private DiscordRestClient restClient;
 
         private bool devMode = true;
 
@@ -35,7 +40,7 @@ namespace DiscordUserStatsBot
         private SocketVoiceChannel debugVoiceChannelRef;
 
         private char botCommandPrefix = '!';
-        private string ignoreAfterCommandString = "n0ll";
+        private string ignoreAfterCommandString = "IACSn0ll";
 
         //playerStatIndex: a dictionary with user ids as the key and a userStatIndex struct(?)
         private Dictionary<ulong, UserStats> playerStatIndex;
@@ -51,18 +56,28 @@ namespace DiscordUserStatsBot
         #region InitFunctions
         public async Task MainAsync()
         {
-            client = new DiscordSocketClient();
+            DiscordSocketConfig config = new DiscordSocketConfig();
+            config.AlwaysDownloadUsers = true;
 
+            client = new DiscordSocketClient(config);
+
+            //restClient = new DiscordRestClient();
+            
+            
             //adds CommandHandler func to MessageRecieved delegate. Therefore CommandHandler will be executed anytime a message is posted on the discord server
+            client.Log += Log;
             client.MessageReceived += CommandHandler;
+            client.MessageReceived += DownloadMembers;
             client.UserVoiceStateUpdated += VoiceChatChange;
             client.Ready += BotSetUp; //Ready is fired when the bot connects to server
-            client.Ready += DownloadUsers;
+            client.GuildMembersDownloaded += DownloadMessage;
 
             //TODO:
-            //_client.JoinedGuild += BotSetUp;
+            //client.JoinedGuild += BotSetUp;
 
-            client.Log += Log;
+            //TODO: try this
+            //BaseSocketClient baseClient;
+            //baseClient.DownloadUsersAsync
 
             //discord people/bots/objects have a "token" AKA ID that is a password/username
             // not secure to hardcode token so instead will get it from saved file (under TomsDiscordBot->bin->Debug->netcoreapp3.1)
@@ -71,7 +86,7 @@ namespace DiscordUserStatsBot
             await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();
 
-            // Block this task until the program is closed.
+            // wait for an indefinite amount of time
             await Task.Delay(-1);
         }
 
@@ -93,10 +108,9 @@ namespace DiscordUserStatsBot
                 }
                 else
                 {
-                    //TODO: get the guild it just connected to and set as guildRef
+                    //TODO: get the guild it just connected to and set as guildRef. Something about Context?
                 }
 
-                
                 Console.WriteLine($"Set up new guild reference to {guildRef.Name}");
 
                 //set up user list
@@ -113,6 +127,25 @@ namespace DiscordUserStatsBot
             return Task.CompletedTask;
         }
 
+        private async Task DownloadMembers(SocketMessage sm)
+        {
+            Console.WriteLine("try downloading users");
+
+            //await guildRef.DownloadUsersAsync();
+
+            Console.WriteLine("users downloaded?");
+        }
+        
+
+        private Task DownloadMessage(SocketGuild guild)
+        {
+            Console.WriteLine("Offline users finished downloading event fired");
+
+            Console.WriteLine($@"Number of downloaded members: {guildRef.DownloadedMemberCount}");
+
+            return Task.CompletedTask;
+        }
+
         private Task Log(LogMessage msg)
         {
             Console.WriteLine(msg.ToString());
@@ -124,7 +157,6 @@ namespace DiscordUserStatsBot
         #region VoiceChatFunctions
         private Task VoiceChatChange(SocketUser user, SocketVoiceState PreviousVoiceChat, SocketVoiceState CurrentVoiceChat)
         {
-
             if (CurrentVoiceChat.VoiceChannel != null)
             {
                 UserJoinedAVoiceChat((SocketGuildUser)user);
@@ -134,15 +166,12 @@ namespace DiscordUserStatsBot
                 UserLeftAllVoiceChats((SocketGuildUser)user);
             }
 
-
             return Task.CompletedTask;
         }
 
         
         private void UserJoinedAVoiceChat(SocketGuildUser guildUser)
         {
-            //debugTextChannelRef.SendMessageAsync($"{user.Username} joined a chat!");
-
             //Get User stat class
             beingProcessedUserStats = GetOtherwiseCreateUserStats(guildUser);
             //Record the time the player entered chat in their assossiated userStat class
@@ -255,7 +284,6 @@ namespace DiscordUserStatsBot
                 }
 
                 return Task.CompletedTask;
-
             }
 
             //get the total voice chat time of user
@@ -263,22 +291,25 @@ namespace DiscordUserStatsBot
             if (command.Equals("totalchattime"))
             {
 
-                guildRef.DownloadUsersAsync(); //TODO: Fix this
+                //Enumerable example
+                /*Console.WriteLine($@"Has all members? {guildRef.HasAllMembers}");
 
-                Console.WriteLine($@"Has all members? {guildRef.HasAllMembers}");
+                Console.WriteLine($@"Number of downloaded members: {guildRef.DownloadedMemberCount}");
 
-                /*
-                //this will try and convert string to an int 32. Returns true or false based off of whether or not it fails
-                bool convertedToInt = Int32.TryParse(stringAfterCommand, out int userID);
 
-                //if converted to int and correct length (18 digits) is a userID
-                if (convertedToInt && stringAfterCommand.Length == 18)
+                SocketRole role;
+
+                IEnumerator<SocketRole> roleE = guildRef.Roles.GetEnumerator();
+
+                //get every user for @ everyone role
+                while(roleE.MoveNext())
                 {
-                    UserStats userStat = GetOtherwiseCreateUserStats(guildRef.GetUser((ulong)(userID)));
+                    role = roleE.Current;
 
+                    Console.WriteLine($@"Role: {role.Name} Role members: {role.Members.Count()}");
                 }
-                else 
                 */
+
 
                 if (stringAfterCommand.Contains('#'))
                 {
@@ -286,7 +317,6 @@ namespace DiscordUserStatsBot
                     int hashtagIndex = stringAfterCommand.IndexOf('#');
                     string username = stringAfterCommand.Substring(0, hashtagIndex).Trim();
                     string userDiscriminator = stringAfterCommand.Substring(hashtagIndex + 1, stringAfterCommand.Length - (hashtagIndex + 1)).Trim();
-
 
                     if (client.GetUser(username, userDiscriminator) == null)
                     {
@@ -299,19 +329,12 @@ namespace DiscordUserStatsBot
 
                         message.Channel.SendMessageAsync($@"{username}'s total chat time is {userStat.TotalVoiceChatTime}!");
                     }
-
-                    
-
                 }
                 else
                 {
                     message.Channel.SendMessageAsync($@"Sorry that isn't a valid username#0000 or \userID. Maybe you misspelled it?");
                 }
-
-
-
             }
-
             //------------------------------------------
 
             return Task.CompletedTask;
@@ -345,7 +368,7 @@ namespace DiscordUserStatsBot
             return Task.CompletedTask;
         }
 
-        //returns " " if nothing there
+        //returns ignoreAfterCommandString if nothing after commmand
         private Task<string> GetStringAfterCommand(SocketMessage message, int lengthOfCommand)
         {
             string stringAfterCommand = ignoreAfterCommandString;
@@ -356,8 +379,6 @@ namespace DiscordUserStatsBot
             {
                 stringAfterCommand = message.Content.Substring(lengthOfCommand, message.Content.Length - (lengthOfCommand));
             }
-
-            //Console.WriteLine($@"string after command is {stringAfterCommand}");
 
             return Task<string>.FromResult(stringAfterCommand.Trim());
         }

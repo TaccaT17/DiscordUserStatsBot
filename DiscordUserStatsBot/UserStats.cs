@@ -66,7 +66,7 @@ namespace DiscordUserStatsBot
             myGuildUser = guildUser;
         }
 
-        //FUNCTION START
+        #region FUNCTIONS
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         public void CalculateAndUpdateUserStats()
         {
@@ -92,7 +92,7 @@ namespace DiscordUserStatsBot
 
 
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
-        //FUNCTION END
+        #endregion
 
     }
 }
