@@ -75,6 +75,7 @@ namespace DiscordUserStatsBot
                 totalVCTime = new TimeSpan();
             }
             totalVCTime += lastTimeLeftVC - lastTimeEnteredVC;
+            Console.WriteLine($"Calculations performed. Total is {totalVCTime}");
         }
 
         //TODO: Getting called too often?

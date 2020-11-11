@@ -287,12 +287,20 @@ namespace DiscordUserStatsBot
                     if (UserIsInChat(tempUserStat.myGuildUser))
                     {
                         StopRecordingVCTime(tempUserStat.myGuildUser);
-                        message.Channel.SendMessageAsync($@"{usernameMinusDiscrim}'s total chat time is {tempUserStat.TotalVoiceChatTime}!");
+                        message.Channel.SendMessageAsync($@"{usernameMinusDiscrim}'s total chat time is " +
+                                                         $@"{tempUserStat.TotalVoiceChatTime.Days} days, " +
+                                                         $@"{tempUserStat.TotalVoiceChatTime.Hours} hours, " +
+                                                         $@"{tempUserStat.TotalVoiceChatTime.Minutes} minutes and " +
+                                                         $@"{tempUserStat.TotalVoiceChatTime.Seconds} seconds!");
                         StartRecordingVCTime(tempUserStat.myGuildUser);
                     }
                     else
                     {
-                        message.Channel.SendMessageAsync($@"{usernameMinusDiscrim}'s total chat time is {tempUserStat.TotalVoiceChatTime}!");
+                        message.Channel.SendMessageAsync($@"{usernameMinusDiscrim}'s total chat time is " + 
+                                                         $@"{tempUserStat.TotalVoiceChatTime.Days} days, " + 
+                                                         $@"{tempUserStat.TotalVoiceChatTime.Hours} hours, " +
+                                                         $@"{tempUserStat.TotalVoiceChatTime.Minutes} minutes and " + 
+                                                         $@"{tempUserStat.TotalVoiceChatTime.Seconds} seconds!");
                     }
                 }
                 else
