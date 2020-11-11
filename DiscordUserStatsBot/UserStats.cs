@@ -14,7 +14,7 @@ namespace DiscordUserStatsBot
         #region VARIABLES
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-        private SocketGuildUser myGuildUser;
+        public SocketGuildUser myGuildUser;
         private TimeSpan totalVCTime;
         private int totalMessagesSent = 0;
 
@@ -68,7 +68,7 @@ namespace DiscordUserStatsBot
 
         #region FUNCTIONS
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
-        public void CalculateAndUpdateUserStats()
+        public void CalculateAndUpdateUserVCTime()
         {
             if(totalVCTime == null)
             {
@@ -77,6 +77,7 @@ namespace DiscordUserStatsBot
             totalVCTime += lastTimeLeftVC - lastTimeEnteredVC;
         }
 
+        //TODO: Getting called too often?
         public void RecordGuildUserEnterVoiceChatTime()
         {
             lastTimeEnteredVC = DateTime.UtcNow;
@@ -86,7 +87,7 @@ namespace DiscordUserStatsBot
         public void RecordGuildUserLeaveVoiceChatTime()
         {
             lastTimeLeftVC = DateTime.UtcNow;
-            Console.WriteLine($"User entered chat at {lastTimeLeftVC.ToString()}");
+            Console.WriteLine($"User left all chats at {lastTimeLeftVC.ToString()}");
         }
 
 

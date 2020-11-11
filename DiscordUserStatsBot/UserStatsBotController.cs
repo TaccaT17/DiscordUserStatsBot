@@ -41,15 +41,14 @@ namespace DiscordUserStatsBot
         private char botCommandPrefix = '!';
         private string ignoreAfterCommandString = "IACSn0ll";
 
-        //playerStatIndex: a dictionary with user ids as the key and a userStatIndex struct(?)
+        //dictionaries that record users and their corresponding UserStats
         private Dictionary<ulong, UserStats> guildUserIDToStatIndex;
         private Dictionary<string, ulong> guildUserNameToIDIndex;
-
-        UserStats beingProcessedUserStats;
 
         private event Func<SocketUser, Task> UserJoinedAVoiceChat;
         private event Func<SocketUser, Task> UserLeftAllVoiceChats;
 
+        private bool trackBotStats = true;
 
         //--------------------------------------------------------------------------------------------------------------------------------------------------------------- 
         #endregion
@@ -64,20 +63,22 @@ namespace DiscordUserStatsBot
             config.AlwaysDownloadUsers = true;
 
             client = new DiscordSocketClient(config);
-
-            //restClient = new DiscordRestClient();
             
-            
-            //adds CommandHandler func to MessageRecieved delegate. Therefore CommandHandler will be executed anytime a message is posted on the discord server
             client.Log += Log;
-            client.MessageReceived += CommandHandler;
-            client.MessageReceived += DownloadMembers;
+
             client.UserVoiceStateUpdated += VoiceChatChange;
+
             client.Ready += BotSetUp; //Ready is fired when the bot connects to server
-            client.GuildMembersDownloaded += DownloadMessage;
+
+            //Times when the bot will create an entry for a user
+            client.UserJoined += AddNewUserToStatBotIndex;
             client.MessageReceived += AddNewUserToStatBotIndex;
             UserJoinedAVoiceChat += AddNewUserToStatBotIndex;
 
+            client.MessageReceived += CommandHandler; //adds CommandHandler func to MessageRecieved event delegate. Therefore CommandHandler will be executed anytime a message is posted on the discord server
+
+            UserJoinedAVoiceChat += StartRecordingVCTime;
+            UserLeftAllVoiceChats += StopRecordingVCTime;
 
             //TODO:
             //client.JoinedGuild += BotSetUp;
@@ -100,11 +101,11 @@ namespace DiscordUserStatsBot
         private Task BotSetUp()
         {
             //TODO:
-            //called when bot either joins guild, when bot comes online, . 
+            //called when bot either joins guild, when bot comes online. 
             //Will check to see if bot set up and up to date. If not will update.
 
             //Let people know bot updating
-            Console.WriteLine("BotBeing set up");
+            Console.WriteLine("Bot being set up");
 
             //get guild(AKA server)
             if (guildRef == null)
@@ -120,8 +121,11 @@ namespace DiscordUserStatsBot
 
                 Console.WriteLine($"Set up new guild reference to {guildRef.Name}");
 
-                //set up user list
+                //TODO: get relevant info AKA if this bot is new to the server make dictioneries, if not get dictionaries
+
+                //set up user lists
                 guildUserIDToStatIndex = new Dictionary<ulong, UserStats>();
+                guildUserNameToIDIndex = new Dictionary<string, ulong>();
             }
 
             if (devMode)
@@ -130,25 +134,6 @@ namespace DiscordUserStatsBot
                 debugTextChannelRef = guildRef.GetTextChannel(TBE_DEBUG_TEXT_CHANNEL_ID);
                 debugVoiceChannelRef = guildRef.GetVoiceChannel(TBE_DEBUG_VOICE_CHANNEL_ID);
             }
-
-            return Task.CompletedTask;
-        }
-
-        private async Task DownloadMembers(SocketMessage sm)
-        {
-            Console.WriteLine("try downloading users");
-
-            //await guildRef.DownloadUsersAsync();
-
-            Console.WriteLine("users downloaded?");
-        }
-        
-
-        private Task DownloadMessage(SocketGuild guild)
-        {
-            Console.WriteLine("Offline users finished downloading event fired");
-
-            Console.WriteLine($@"Number of downloaded members: {guildRef.DownloadedMemberCount}");
 
             return Task.CompletedTask;
         }
@@ -172,30 +157,28 @@ namespace DiscordUserStatsBot
             {
                 UserLeftAllVoiceChats((SocketGuildUser)user);
             }
+            return Task.CompletedTask;
+        }
+
+        //TODO: Shouldn't these be inside the UserStats class?
+        private Task StartRecordingVCTime(SocketUser user)
+        {
+            //Get User stat class
+            UserStats tempUserStatsRef = GetUserStats(GetUserNamePlusDiscrim(user));
+            //Record the time the player entered chat in their assossiated userStat class
+            tempUserStatsRef.RecordGuildUserEnterVoiceChatTime();
 
             return Task.CompletedTask;
         }
 
-        /*
-        private void UserJoinedAVoiceChat(SocketGuildUser guildUser)
+        private Task StopRecordingVCTime(SocketUser user)
         {
-            //Get User stat class
-            beingProcessedUserStats = GetOtherwiseCreateUserStats(guildUser);
-            //Record the time the player entered chat in their assossiated userStat class
-            beingProcessedUserStats.RecordGuildUserEnterVoiceChatTime();
+            UserStats tempUserStatsRef = GetUserStats(GetUserNamePlusDiscrim(user));
+            tempUserStatsRef.RecordGuildUserLeaveVoiceChatTime();
+            tempUserStatsRef.CalculateAndUpdateUserVCTime();
 
+            return Task.CompletedTask;
         }
-
-        private void UserLeftAllVoiceChats(SocketGuildUser guildUser)
-        {
-            //Get User stat class
-            beingProcessedUserStats = GetOtherwiseCreateUserStats(guildUser);
-            //Record the time the player entered chat in their assossiated userStat class
-            beingProcessedUserStats.RecordGuildUserLeaveVoiceChatTime();
-            //record how much time they were in chat
-            beingProcessedUserStats.CalculateAndUpdateUserStats();
-        }
-        */
         #endregion
 
         #region CommandFunctions
@@ -241,11 +224,11 @@ namespace DiscordUserStatsBot
             //--------------------------------------------------------------------------------------------------
             #endregion
 
-            //COMMANDS 
+            #region COMMANDS
             //REMEMBER: NO SPACES OR CAPITALS ALLOWED IN COMMANDS
             //--------------------------------------------------------------------------------------------------
 
-            //COMMANDS HERE
+            //COMMANDS
             //------------------------------------------
             if (command.Equals("hi"))
             {
@@ -281,41 +264,31 @@ namespace DiscordUserStatsBot
             //!totalchattime <username#0000> AKA <tag> //OBSELETE: OR !totalchattime userID
             if (command.Equals("totalchattime"))
             {
-
-                //Enumerable example
-                /*Console.WriteLine($@"Has all members? {guildRef.HasAllMembers}");
-
-                Console.WriteLine($@"Number of downloaded members: {guildRef.DownloadedMemberCount}");
-
-
-                SocketRole role;
-
-                IEnumerator<SocketRole> roleE = guildRef.Roles.GetEnumerator();
-
-                //get every user for @ everyone role
-                while(roleE.MoveNext())
-                {
-                    role = roleE.Current;
-
-                    Console.WriteLine($@"Role: {role.Name} Role members: {role.Members.Count()}");
-                }
-                */
-
-
                 if (stringAfterCommand.Contains('#'))
                 {
-                    //split username#0000 and do GetUser(username, #0000);
+                    //get username string from stringAfterCommand
                     int hashtagIndex = stringAfterCommand.IndexOf('#');
                     string usernameMinusDiscrim = stringAfterCommand.Substring(0, hashtagIndex).Trim();
                     string userDiscriminator = stringAfterCommand.Substring(hashtagIndex + 1, stringAfterCommand.Length - (hashtagIndex + 1)).Trim();
                     //to get rid of any space between username and discriminator
-                    string fullUserName = usernameMinusDiscrim + userDiscriminator;
+                    string fullUserName = usernameMinusDiscrim + '#' + userDiscriminator;
 
                     UserStats tempUserStat = GetUserStats(fullUserName);
 
-                    if (fullUserName == null)
+                    if (fullUserName == null || tempUserStat == null)
                     {
-                        message.Channel.SendMessageAsync($@"Sorry there is no data on {fullUserName}. Maybe you misspelled it?");
+                        //Possible Logic Error: one of the two dictionaries is lacking an entry
+                        message.Channel.SendMessageAsync($@"Sorry there is no data on {fullUserName}.");
+
+                        return Task.CompletedTask;
+                    }
+
+                    //if user in a chat update their time before sending message, otherwise just send message
+                    if (UserIsInChat(tempUserStat.myGuildUser))
+                    {
+                        StopRecordingVCTime(tempUserStat.myGuildUser);
+                        message.Channel.SendMessageAsync($@"{usernameMinusDiscrim}'s total chat time is {tempUserStat.TotalVoiceChatTime}!");
+                        StartRecordingVCTime(tempUserStat.myGuildUser);
                     }
                     else
                     {
@@ -328,6 +301,7 @@ namespace DiscordUserStatsBot
                 }
             }
             //------------------------------------------
+            #endregion
 
             return Task.CompletedTask;
         }
@@ -342,7 +316,7 @@ namespace DiscordUserStatsBot
             if (userGuild.GuildPermissions.ManageGuild)
             {
                 botCommandPrefix = stringAfterCommand[0];
-                if(stringAfterCommand.Length > 1)
+                if (stringAfterCommand.Length > 1)
                 {
                     message.Channel.SendMessageAsync($@"The command prefix for UserStat bot has been set to the first character typed {botCommandPrefix}");
                 }
@@ -350,7 +324,7 @@ namespace DiscordUserStatsBot
                 {
                     message.Channel.SendMessageAsync($@"The command prefix for UserStat bot has been set to {botCommandPrefix}");
                 }
-                
+
             }
             else
             {
@@ -376,18 +350,29 @@ namespace DiscordUserStatsBot
         }
         #endregion
 
+        #region UserStatFunctions
+        //TODO: way to deal with when user changes their name
 
         private Task AddNewUserToStatBotIndex(SocketUser user)
         {
-            //if user not already in playerNameIndex
-            if (!guildUserNameToIDIndex.ContainsKey(((SocketGuildUser)user).Username))
+            //track bot stats?
+            if (!trackBotStats && user.IsBot)
+            {
+                return Task.CompletedTask;
+            }
+
+            //dictionary stores users using username + discriminator as key
+            string usernamePlusDiscrim = GetUserNamePlusDiscrim((SocketGuildUser)user);
+
+            //make sure there is not already an entry for this user
+            if (!guildUserNameToIDIndex.ContainsKey(usernamePlusDiscrim))
             {   
                 //add them
-                guildUserNameToIDIndex.Add((((SocketGuildUser)user).Username), user.Id);
+                guildUserNameToIDIndex.Add(usernamePlusDiscrim, user.Id);
                 //make them a UserStat class instance and store it
                 guildUserIDToStatIndex.Add(user.Id, new UserStats((SocketGuildUser)user));
 
-                Console.WriteLine($@"Created a new userStat for {((SocketGuildUser)user).Username}");
+                Console.WriteLine($@"Created a new userStat for {usernamePlusDiscrim}");
             }
 
             return Task.CompletedTask;
@@ -400,14 +385,14 @@ namespace DiscordUserStatsBot
         }
 
         //returns null if no user in the dictionary
-        private UserStats GetUserStats(string guildUserName)
+        private UserStats GetUserStats(string userName)
         {
             UserStats userStatInst = null;
 
             //if user in guildUserNameIndex
-            if (guildUserNameToIDIndex.ContainsKey(guildUserName))
+            if (guildUserNameToIDIndex.ContainsKey(userName))
             {
-                userStatInst = guildUserIDToStatIndex[guildUserNameToIDIndex[guildUserName]];
+                userStatInst = guildUserIDToStatIndex[guildUserNameToIDIndex[userName]];
             }
             else
             {
@@ -416,6 +401,57 @@ namespace DiscordUserStatsBot
 
             return userStatInst;
         }
+        #endregion
+
+        #region MiscFunctions
+        //TODO: is there a better way to do this??? Generics?
+        private string GetUserNamePlusDiscrim(SocketUser user)
+        {
+            return GetUserNamePlusDiscrim((SocketGuildUser)user);
+        }
+
+        private string GetUserNamePlusDiscrim(SocketGuildUser guildUser)
+        {
+            return guildUser.Username + '#' + guildUser.Discriminator;
+        }
+
+        private bool UserIsInChat(SocketUser userInQuestion)
+        {
+            //loop through active channels and users in them 
+            //Note: contrary to the documentation guildRef.VoiceChannels only gets channels that are being actively used
+            //Note: contrary to the documentation VoiceChannel.Users only gets users currently in that channel
+
+            SocketVoiceChannel voiceChannel;
+            IEnumerator<SocketVoiceChannel> voiceChannelE = guildRef.VoiceChannels.GetEnumerator();
+
+            while (voiceChannelE.MoveNext())
+            {
+                voiceChannel = voiceChannelE.Current;
+
+                SocketUser userInVC;
+
+                IEnumerator<SocketUser> userInVC_E = voiceChannel.Users.GetEnumerator();
+
+                while (userInVC_E.MoveNext())
+                {
+                    userInVC = userInVC_E.Current;
+
+                    //Console.WriteLine($@"Chat: {voiceChannel.Name} Chat user username: {userLoop.Username}");
+
+                    //check to see if the user in chat is the same as the user being asked about
+                    if (userInVC.Id.Equals(userInQuestion.Id))
+                    {
+                        Console.WriteLine("Matching user in chat");
+                        return true;
+                    }
+                }
+            }
+
+            Console.WriteLine("No matching user in chat");
+            return false;
+        }
+
+        #endregion
 
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion
