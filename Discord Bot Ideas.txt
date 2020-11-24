@@ -1,0 +1,7 @@
+Idea 1 - Bot that records how much time a person spends 
+in chat channel on a given server and posts that stat 
+on their user profile somehow
+
+Griffin ideas
+-“who wants to play %game%?”
+-automated event scheduler and announcer

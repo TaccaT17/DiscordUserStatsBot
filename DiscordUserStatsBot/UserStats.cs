@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Dynamic;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace DiscordUserStatsBot
 {
@@ -15,6 +16,7 @@ namespace DiscordUserStatsBot
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         public SocketGuildUser myGuildUser;
+        public UserStatsBotController myController;
         private TimeSpan totalVCTime;
         private int totalMessagesSent = 0;
 
@@ -61,9 +63,11 @@ namespace DiscordUserStatsBot
         #endregion
 
         //CONSTRUCTOR
-        public UserStats(SocketGuildUser guildUser)
+        public UserStats(SocketGuildUser guildUser, UserStatsBotController controllerRef)
         {
             myGuildUser = guildUser;
+
+            myController = controllerRef;
         }
 
         #region FUNCTIONS
@@ -75,23 +79,30 @@ namespace DiscordUserStatsBot
                 totalVCTime = new TimeSpan();
             }
             totalVCTime += lastTimeLeftVC - lastTimeEnteredVC;
-            Console.WriteLine($"Calculations performed. Total is {totalVCTime}");
+            //Console.WriteLine($"Calculations performed. Total is {totalVCTime}");
         }
 
         //TODO: Getting called too often?
         public void RecordGuildUserEnterVoiceChatTime()
         {
             lastTimeEnteredVC = DateTime.UtcNow;
-            Console.WriteLine($"User entered chat at {lastTimeEnteredVC.ToString()}");
+            //Console.WriteLine($"User entered chat at {lastTimeEnteredVC.ToString()}");
         }
 
         public void RecordGuildUserLeaveVoiceChatTime()
         {
             lastTimeLeftVC = DateTime.UtcNow;
-            Console.WriteLine($"User left all chats at {lastTimeLeftVC.ToString()}");
+            //Console.WriteLine($"User left all chats at {lastTimeLeftVC.ToString()}");
         }
 
+        public Task RecordThisUserSentAMessage(SocketMessage message)
+        {
+            //Console.WriteLine($@"Recorded {myGuildUser} sent a Message");
 
+            totalMessagesSent++;
+
+            return Task.CompletedTask;
+        }
 
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion
