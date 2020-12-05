@@ -3,6 +3,7 @@ using Discord.Commands;
 using Discord.Net.Queue;
 using Discord.Rest;
 using Discord.WebSocket;
+using System.Text.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -13,16 +14,20 @@ using System.Threading;
 using System.Threading.Tasks;
 
 
-//CURRENT TASK: Change so that when UserStat created will subscribe to appropriate events
+//CURRENT TASK: find a place to save all the data so that when the bot needs to be reset it can retrieve that data
+//SQLite?
 
-//Debugging Issues: For some reason RecordUserSentMessage not firing off when UserSentMessage is
+//Debugging Issues: 
 
 ///FUTURE TASKS:
 ///Deal with user changing username
-///Record Messages sent
 ///set up so records specific days of the week, averages, etc.
-///find a place to save all the data so that when the bot needs to be reset it can retrieve that data
-///create roles to organize people into
+///Make it get the guild it's a part of on start up
+///create roles to organize users into
+///make totalmessages ignore bot commands
+///make it so only saves name to id dictionary when necessary (new user, name change)
+///change so takes username and then if there is more than one user with that name prompts you for a discriminator
+///resolve issues that occur when one of the two dictionary saves is deleted
 
 namespace DiscordUserStatsBot
 {
@@ -54,13 +59,15 @@ namespace DiscordUserStatsBot
         private string ignoreAfterCommandString = "IACSn0ll";
 
         //dictionaries that record users and their corresponding UserStats
-        private Dictionary<ulong, UserStats> guildUserIDToStatIndex;
-        private Dictionary<string, ulong> guildUserNameToIDIndex;
+        public Dictionary<ulong, UserStats> guildUserIDToStatIndex;
+        public Dictionary<string, ulong> guildUserNameToIDIndex;
 
         public event Func<SocketUser, Task> UserJoinedAVoiceChat;
         public event Func<SocketUser, Task> UserLeftAllVoiceChats;
 
         private bool trackBotStats = true;
+
+        private SaveHandler saveHandlerRef;
 
         //--------------------------------------------------------------------------------------------------------------------------------------------------------------- 
         #endregion
@@ -89,6 +96,7 @@ namespace DiscordUserStatsBot
 
             client.MessageReceived += CommandHandler; //adds CommandHandler func to MessageRecieved event delegate. Therefore CommandHandler will be executed anytime a message is posted on the discord server
 
+            //For record user stats
             client.MessageReceived += RecordMessageSent;
             UserJoinedAVoiceChat += StartRecordingVCTime;
             UserLeftAllVoiceChats += StopRecordingVCTime;
@@ -110,9 +118,6 @@ namespace DiscordUserStatsBot
             //called when bot either joins guild, when bot comes online. 
             //Will check to see if bot set up and up to date. If not will update.
 
-            //Let people know bot updating
-            Console.WriteLine("Bot being set up");
-
             //get guild(AKA server)
             if (guildRef == null)
             {
@@ -128,10 +133,6 @@ namespace DiscordUserStatsBot
                 Console.WriteLine($"Set up new guild reference to {guildRef.Name}");
 
                 //TODO: get relevant info AKA if this bot is new to the server make dictioneries, if not get dictionaries
-
-                //set up user lists
-                guildUserIDToStatIndex = new Dictionary<ulong, UserStats>();
-                guildUserNameToIDIndex = new Dictionary<string, ulong>();
             }
 
             if (devMode)
@@ -140,6 +141,26 @@ namespace DiscordUserStatsBot
                 debugTextChannelRef = guildRef.GetTextChannel(TBE_DEBUG_TEXT_CHANNEL_ID);
                 debugVoiceChannelRef = guildRef.GetVoiceChannel(TBE_DEBUG_VOICE_CHANNEL_ID);
             }
+
+            //make save class
+            saveHandlerRef = new SaveHandler();
+
+            //set up user dictionaries and load any info that already exists
+            saveHandlerRef.LoadDictionary(out guildUserIDToStatIndex, nameof(guildUserIDToStatIndex)); //out keyword passes by reference instead of value
+            saveHandlerRef.LoadDictionary(out guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
+
+            if (guildUserNameToIDIndex == null)
+            {
+                guildUserNameToIDIndex = new Dictionary<string, ulong>();
+                Console.WriteLine("New dictionary to save usernames and IDs made.");
+            }
+            if (guildUserIDToStatIndex == null)
+            {
+                guildUserIDToStatIndex = new Dictionary<ulong, UserStats>();
+                Console.WriteLine("New dictionary to save IDs and UserStats made.");
+            }
+
+            Console.WriteLine("Bot set up");
 
             return Task.CompletedTask;
         }
@@ -182,6 +203,8 @@ namespace DiscordUserStatsBot
             UserStats tempUserStatsRef = GetUserStats(GetUserNamePlusDiscrim((SocketGuildUser)user));
             tempUserStatsRef.RecordGuildUserLeaveVoiceChatTime();
             tempUserStatsRef.CalculateAndUpdateUserVCTime();
+            saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
+            saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
 
             return Task.CompletedTask;
         }
@@ -193,8 +216,10 @@ namespace DiscordUserStatsBot
             if(guildUserIDToStatIndex.TryGetValue(message.Author.Id, out tempUserStatsRef))
             {
                 tempUserStatsRef.RecordThisUserSentAMessage(message);
+
+                saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
+                saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
             }
-            
 
             return Task.CompletedTask;
         }
@@ -294,10 +319,9 @@ namespace DiscordUserStatsBot
                 }
                 else
                 {
-
                     UserStats tempUserStat = GetUserStats(fullUserName);
 
-                    if (fullUserName == null || tempUserStat == null)
+                    if (tempUserStat == null)
                     {
                         message.Channel.SendMessageAsync($@"Sorry there is no data on {fullUserName}.");
                         //This could possibly be a logic error: one of the two dictionaries is lacking an entry for this user
@@ -305,27 +329,33 @@ namespace DiscordUserStatsBot
                         return Task.CompletedTask;
                     }
 
-                    //if user in a chat update their time before sending message, otherwise just send message
-                    if (UserIsInChat(tempUserStat.myGuildUser))
+                    if(GetUserID(fullUserName) != 0 && (guildRef.GetUser(GetUserID(fullUserName)) != null))
                     {
-                        StopRecordingVCTime(tempUserStat.myGuildUser);
-                        message.Channel.SendMessageAsync($@"{tempUserStat.myGuildUser.Username}'s total chat time is " +
-                                                         $@"{tempUserStat.TotalVoiceChatTime.Days} days, " +
-                                                         $@"{tempUserStat.TotalVoiceChatTime.Hours} hours, " +
-                                                         $@"{tempUserStat.TotalVoiceChatTime.Minutes} minutes and " +
-                                                         $@"{tempUserStat.TotalVoiceChatTime.Seconds} seconds!");
-                        StartRecordingVCTime(tempUserStat.myGuildUser);
-                    }
-                    else
-                    {
-                        message.Channel.SendMessageAsync($@"{tempUserStat.myGuildUser.Username}'s total chat time is " +
-                                                         $@"{tempUserStat.TotalVoiceChatTime.Days} days, " +
-                                                         $@"{tempUserStat.TotalVoiceChatTime.Hours} hours, " +
-                                                         $@"{tempUserStat.TotalVoiceChatTime.Minutes} minutes and " +
-                                                         $@"{tempUserStat.TotalVoiceChatTime.Seconds} seconds!");
+                        SocketGuildUser guildUser = guildRef.GetUser(GetUserID(fullUserName));
+
+                        //if user in a chat update their time before sending message, otherwise just send message
+                        if (UserIsInChat(guildUser))
+                        {
+                            StopRecordingVCTime(guildUser);
+                            message.Channel.SendMessageAsync($@"{tempUserStat.usersName}'s total chat time is " +
+                                                             $@"{tempUserStat.TotalVoiceChatTime.Days} days, " +
+                                                             $@"{tempUserStat.TotalVoiceChatTime.Hours} hours, " +
+                                                             $@"{tempUserStat.TotalVoiceChatTime.Minutes} minutes and " +
+                                                             $@"{tempUserStat.TotalVoiceChatTime.Seconds} seconds!");
+                            StartRecordingVCTime(guildUser);
+                        }
+                        else
+                        {
+                            message.Channel.SendMessageAsync($@"{tempUserStat.usersName}'s total chat time is " +
+                                                             $@"{tempUserStat.TotalVoiceChatTime.Days} days, " +
+                                                             $@"{tempUserStat.TotalVoiceChatTime.Hours} hours, " +
+                                                             $@"{tempUserStat.TotalVoiceChatTime.Minutes} minutes and " +
+                                                             $@"{tempUserStat.TotalVoiceChatTime.Seconds} seconds!");
+                        }
                     }
                 }
             }
+            //get the total messages sent by user
             else if (command.Equals("totalmessagessent"))
             {
                 string fullUserName = ReformatStringToUsername(stringAfterCommand).Result;
@@ -340,7 +370,7 @@ namespace DiscordUserStatsBot
                 {
                     UserStats tempUserStat = GetUserStats(fullUserName);
 
-                    if (fullUserName == null || tempUserStat == null)
+                    if (tempUserStat == null)
                     {
                         message.Channel.SendMessageAsync($@"Sorry there is no data on {fullUserName}.");
                         //This could possibly be a logic error: one of the two dictionaries is lacking an entry for this user
@@ -348,11 +378,12 @@ namespace DiscordUserStatsBot
                         return Task.CompletedTask;
                     }
 
-                    message.Channel.SendMessageAsync($@"{tempUserStat.myGuildUser.Username} has sent {tempUserStat.TotalMessagesSent} messages!");
+                    message.Channel.SendMessageAsync($@"{tempUserStat.usersName} has sent {tempUserStat.TotalMessagesSent} messages!");
                 }
             }
 
             //------------------------------------------
+            //--------------------------------------------------------------------------------------------------
             #endregion
 
             return Task.CompletedTask;
@@ -470,7 +501,7 @@ namespace DiscordUserStatsBot
                     //add them
                     guildUserNameToIDIndex.Add(usernamePlusDiscrim, user.Id);
                     //make them a UserStat class instance and store it
-                    guildUserIDToStatIndex.Add(user.Id, new UserStats((SocketGuildUser)user, this));
+                    guildUserIDToStatIndex.Add(user.Id, new UserStats(this, usernamePlusDiscrim));
 
                     Console.WriteLine($@"Created a new userStat for {usernamePlusDiscrim}");
                 }
@@ -499,11 +530,30 @@ namespace DiscordUserStatsBot
             }
             else
             {
-                Console.WriteLine("The bot has no recording of a user with that name");
+                Console.WriteLine("The bot has no recording of a user with that name: userstat");
             }
 
             return userStatInst;
         }
+
+        //returns 0 if no corresponding id in dictionary
+        private ulong GetUserID(string userName)
+        {
+            ulong userID = 0;
+
+            //if user in guildUserNameIndex
+            if (guildUserNameToIDIndex.ContainsKey(userName))
+            {
+                userID = guildUserNameToIDIndex[userName];
+            }
+            else
+            {
+                Console.WriteLine("The bot has no recording of a user with that name: id");
+            }
+
+            return userID;
+        }
+
         #endregion
 
         #region MiscFunctions

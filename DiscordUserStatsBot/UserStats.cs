@@ -15,47 +15,32 @@ namespace DiscordUserStatsBot
         #region VARIABLES
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-        public SocketGuildUser myGuildUser;
-        public UserStatsBotController myController;
+        private UserStatsBotController myController;
+        public string usersName;
+        [Newtonsoft.Json.JsonProperty] //JSON by default only serializes public members. This is the work around
         private TimeSpan totalVCTime;
-        private int totalMessagesSent = 0;
-
+        [Newtonsoft.Json.JsonProperty]
+        private int totalMessagesSent;
         //VC = voice chat
+        [Newtonsoft.Json.JsonProperty]
         private DateTime lastTimeEnteredVC;
+        [Newtonsoft.Json.JsonProperty]
         private DateTime lastTimeLeftVC;
 
-        //dictionary 
-
+        //public getters
         public int TotalMessagesSent {
             get {return totalMessagesSent; }
-            set
-            {
-                totalMessagesSent = value;
-            }
         }
-
         public TimeSpan TotalVoiceChatTime { 
             get { return totalVCTime; }
-            set
-            {
-                totalVCTime = value;
-            }
         }
-
         public DateTime LastTimeEnteredVoiceChat
         {
-            set
-            {
-                lastTimeEnteredVC = value;
-            }
+            get { return lastTimeEnteredVC; }
         }
-
         public DateTime LastTimeLeftVoiceChat
         {
-            set
-            {
-                lastTimeLeftVC = value;
-            }
+            get { return lastTimeLeftVC; }
         }
 
 
@@ -63,11 +48,14 @@ namespace DiscordUserStatsBot
         #endregion
 
         //CONSTRUCTOR
-        public UserStats(SocketGuildUser guildUser, UserStatsBotController controllerRef)
+        public UserStats(UserStatsBotController controllerRef, string userName)
         {
-            myGuildUser = guildUser;
-
             myController = controllerRef;
+            usersName = userName;
+
+            //set defaults to zero
+            totalVCTime = TimeSpan.Zero;
+            totalMessagesSent = 0;
         }
 
         #region FUNCTIONS
