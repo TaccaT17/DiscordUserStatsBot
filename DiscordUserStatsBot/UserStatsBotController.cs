@@ -14,8 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 
-//CURRENT TASK: find a place to save all the data so that when the bot needs to be reset it can retrieve that data
-//SQLite?
+//CURRENT TASK:
 
 //Debugging Issues: 
 
@@ -26,8 +25,9 @@ using System.Threading.Tasks;
 ///create roles to organize users into
 ///make totalmessages ignore bot commands
 ///make it so only saves name to id dictionary when necessary (new user, name change)
-///change so takes username and then if there is more than one user with that name prompts you for a discriminator
-///resolve issues that occur when one of the two dictionary saves is deleted
+///change so takes username and then if there is more than one user with that name prompts you for a discriminator. Also deals with nicknames.
+///make it so you don't have to restart bot to call users who have changed their names?
+///Allow people to also search for userstats with an ID
 
 namespace DiscordUserStatsBot
 {
@@ -337,7 +337,7 @@ namespace DiscordUserStatsBot
                         if (UserIsInChat(guildUser))
                         {
                             StopRecordingVCTime(guildUser);
-                            message.Channel.SendMessageAsync($@"{tempUserStat.usersName}'s total chat time is " +
+                            message.Channel.SendMessageAsync($@"{tempUserStat.UsersFullName}'s total chat time is " +
                                                              $@"{tempUserStat.TotalVoiceChatTime.Days} days, " +
                                                              $@"{tempUserStat.TotalVoiceChatTime.Hours} hours, " +
                                                              $@"{tempUserStat.TotalVoiceChatTime.Minutes} minutes and " +
@@ -346,7 +346,7 @@ namespace DiscordUserStatsBot
                         }
                         else
                         {
-                            message.Channel.SendMessageAsync($@"{tempUserStat.usersName}'s total chat time is " +
+                            message.Channel.SendMessageAsync($@"{tempUserStat.UsersFullName}'s total chat time is " +
                                                              $@"{tempUserStat.TotalVoiceChatTime.Days} days, " +
                                                              $@"{tempUserStat.TotalVoiceChatTime.Hours} hours, " +
                                                              $@"{tempUserStat.TotalVoiceChatTime.Minutes} minutes and " +
@@ -378,7 +378,7 @@ namespace DiscordUserStatsBot
                         return Task.CompletedTask;
                     }
 
-                    message.Channel.SendMessageAsync($@"{tempUserStat.usersName} has sent {tempUserStat.TotalMessagesSent} messages!");
+                    message.Channel.SendMessageAsync($@"{tempUserStat.UsersFullName} has sent {tempUserStat.TotalMessagesSent} messages!");
                 }
             }
 
@@ -460,56 +460,70 @@ namespace DiscordUserStatsBot
 
         private Task AddNewUserToStatBotIndex(SocketUser user)
         {
+
+            //track bot stats?
+            if (!trackBotStats && user.IsBot)
+            {
+                return Task.CompletedTask;
+            }
+
             //dictionary stores users using username + discriminator as key
             string usernamePlusDiscrim = GetUserNamePlusDiscrim((SocketGuildUser)user);
 
-            //if already has username then you're good
-            if (guildUserNameToIDIndex.ContainsKey(usernamePlusDiscrim))
+            //if there is an entry in both dictionaries you're good
+            if (guildUserNameToIDIndex.ContainsKey(usernamePlusDiscrim) && guildUserIDToStatIndex.ContainsKey(user.Id))
             {
-                //Console.WriteLine($@"All good, already have {usernamePlusDiscrim}");
                 return Task.CompletedTask;
             }
+            //if doesn't have entry in either dictionary make new entry for both
+            else if (!(guildUserNameToIDIndex.ContainsKey(usernamePlusDiscrim)) && !(guildUserIDToStatIndex.ContainsKey(user.Id)))
+            {
+                guildUserNameToIDIndex.Add(usernamePlusDiscrim, user.Id);
+                guildUserIDToStatIndex.Add(user.Id, new UserStats(this, usernamePlusDiscrim));
+                Console.WriteLine($@"Created a new userStat for {usernamePlusDiscrim}");
+                return Task.CompletedTask;
+            }
+            //if just doesn't have id/stat entry make a new one (prior info unfortunately lost) 
+            else if (guildUserNameToIDIndex.ContainsKey(usernamePlusDiscrim) && !(guildUserIDToStatIndex.ContainsKey(user.Id)))
+            {
+                //caused by JSON dictionary having been deleted. Make a new id/user entry  
+                guildUserIDToStatIndex.Add(user.Id, new UserStats(this, usernamePlusDiscrim));
+
+                Console.WriteLine($@"ID/UserStat dictionary was at some point deleted. Therefore making a fresh ID/UserStat entry for {usernamePlusDiscrim}.");
+
+                return Task.CompletedTask;
+            }
+            //just doesn't have username/id entry...
             else
             {
-                //track bot stats?
-                if (!trackBotStats && user.IsBot)
-                {
-                    return Task.CompletedTask;
-                }
+                //caused by JSON dictionary having been deleted OR user changed their name OR both
+                //...need to either update username, remake JSON dictionary or both
 
-                //search to see if this is a user who simply changed their username
-                if (guildUserIDToStatIndex.ContainsKey(user.Id))
+                //create loop that looks for a corresponding ID entry in username/ID dictionary
+                foreach (var item in guildUserNameToIDIndex)
                 {
-                    Console.WriteLine("Found that user changed username");
-
-                    foreach (var item in guildUserNameToIDIndex)
+                    //if you find the same ID...
+                    if (item.Value.Equals(user.Id))
                     {
-                        if (item.Value.Equals(user.Id))
-                        {
-                            Console.WriteLine($@"Replaced entry {item.Key}, {item.Value} with {usernamePlusDiscrim}, {user.Id}");
+                        //...user changed their name:
 
-                            //if so replace that entry
-                            guildUserNameToIDIndex.Remove(item.Key);
-                            guildUserNameToIDIndex.Add(usernamePlusDiscrim, user.Id);
+                        //replace that entry with current username
+                        guildUserNameToIDIndex.Remove(item.Key);
+                        guildUserNameToIDIndex.Add(usernamePlusDiscrim, user.Id);
 
-                            return Task.CompletedTask;
-                        }
+                        //update userstat username to reflect this
+                        guildUserIDToStatIndex[user.Id].UpdateUsersName((SocketGuildUser)user);
+
+                        Console.WriteLine($@"{usernamePlusDiscrim} changed their username! Replaced their Username/ID entry {item.Key}, {item.Value} with {usernamePlusDiscrim}, {user.Id}");
+                        return Task.CompletedTask;
                     }
                 }
-                else
-                {
-                    //add them
-                    guildUserNameToIDIndex.Add(usernamePlusDiscrim, user.Id);
-                    //make them a UserStat class instance and store it
-                    guildUserIDToStatIndex.Add(user.Id, new UserStats(this, usernamePlusDiscrim));
 
-                    Console.WriteLine($@"Created a new userStat for {usernamePlusDiscrim}");
-                }
+                //...otherwise JSON dict has been deleted so create fresh entry
+                guildUserNameToIDIndex.Add(usernamePlusDiscrim, user.Id);
+                Console.WriteLine($@"Username/ID dictionary was at some point deleted. Therefore making a fresh Username/ID entry for {usernamePlusDiscrim}.");
+                return Task.CompletedTask;
             }
-
-            
-
-            return Task.CompletedTask;
         }
 
         private Task AddNewUserToStatBotIndex(SocketMessage message)

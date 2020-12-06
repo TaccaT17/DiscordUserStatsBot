@@ -16,8 +16,9 @@ namespace DiscordUserStatsBot
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         private UserStatsBotController myController;
-        public string usersName;
         [Newtonsoft.Json.JsonProperty] //JSON by default only serializes public members. This is the work around
+        private string usersFullName;
+        [Newtonsoft.Json.JsonProperty]
         private TimeSpan totalVCTime;
         [Newtonsoft.Json.JsonProperty]
         private int totalMessagesSent;
@@ -42,6 +43,10 @@ namespace DiscordUserStatsBot
         {
             get { return lastTimeLeftVC; }
         }
+        public string UsersFullName
+        {
+            get { return usersFullName; }
+        }
 
 
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -51,7 +56,7 @@ namespace DiscordUserStatsBot
         public UserStats(UserStatsBotController controllerRef, string userName)
         {
             myController = controllerRef;
-            usersName = userName;
+            usersFullName = userName;
 
             //set defaults to zero
             totalVCTime = TimeSpan.Zero;
@@ -88,6 +93,13 @@ namespace DiscordUserStatsBot
             //Console.WriteLine($@"Recorded {myGuildUser} sent a Message");
 
             totalMessagesSent++;
+
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateUsersName(SocketGuildUser correspondingGuildUser)
+        {
+            usersFullName = correspondingGuildUser.Username + '#' + correspondingGuildUser.Discriminator;
 
             return Task.CompletedTask;
         }
