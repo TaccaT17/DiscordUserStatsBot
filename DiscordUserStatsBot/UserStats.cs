@@ -12,6 +12,14 @@ namespace DiscordUserStatsBot
     {
         //Will log stats up to the last 30 days
 
+        public enum UnitOfTime
+        {
+            day,
+            week,
+            month,
+            alltime
+        }
+
         #region VARIABLES
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -36,12 +44,6 @@ namespace DiscordUserStatsBot
         [Newtonsoft.Json.JsonProperty]
         //private UserStatDay dayRecordingStatsFor;
 
-        ///make an array that has up to 30 entries (days)
-        ///those entries contain
-        ///1 how many messages this user sent that day 
-        ///2 how long this user was in voice chat that day
-        ///3 what day of the week it was
-
         ///Averages:
         ///week chattime
         ///week messages
@@ -51,6 +53,9 @@ namespace DiscordUserStatsBot
         ///specific day of the week messages
         ///Average chattime last 30 days
         ///Average messages last 30 days
+        
+
+
 
         //public getters
         public int TotalMessagesSent {
@@ -91,13 +96,14 @@ namespace DiscordUserStatsBot
             DateTime dTSetUp = DateTime.Now;
             dTSetUp = dTSetUp.Date;
             Console.WriteLine($@"dtSetup is {dTSetUp}");
-            for (int day = 0; day < userStatsDays.Length; day++)
+            //populate array backwards (so that "today"/present is always at end of array)
+            for (int day = (userStatsDays.Length - 1); day >= 0; day--)
             {
                 userStatsDays[day] = new UserStatDay(dTSetUp);
 
                 Console.WriteLine($@"Date for day {day} is {userStatsDays[day].date.ToString()}");
 
-                dTSetUp = dTSetUp.AddDays(1);
+                dTSetUp = dTSetUp.AddDays(-1);
             }
 
             dateUserStatCreated = DateTime.Now;
@@ -113,7 +119,7 @@ namespace DiscordUserStatsBot
             }
             totalVCTime += lastTimeLeftVC - lastTimeEnteredVC;
 
-            userStatsDays[GetIndexOfToday()].vCTime += lastTimeLeftVC - lastTimeEnteredVC;
+            userStatsDays[GetIndexOfDay(DateTime.Now)].vCTime += lastTimeLeftVC - lastTimeEnteredVC;
 
             PrintStatDaysArray();
         }
@@ -138,7 +144,7 @@ namespace DiscordUserStatsBot
 
             totalMessagesSent++;
 
-            userStatsDays[GetIndexOfToday()].messagesSent++;
+            userStatsDays[GetIndexOfDay(DateTime.Now)].messagesSent++;
 
             PrintStatDaysArray();
 
@@ -146,28 +152,27 @@ namespace DiscordUserStatsBot
         }
 
         //TODO: make this more efficient by starting from back of array?
-        private int GetIndexOfToday()
+        private int GetIndexOfDay(DateTime dateToChange)
         {
-            DateTime today = DateTime.Now.Date;
-            //today = today.AddDays(40);
+            //dateToChange = dateToChange.AddDays(40);
             //Console.WriteLine($@"40 days from now is {today}");
 
 
-            //find matching date to today
+            //find matching date to dateToChange
             bool dayInArray = false;
             //used to get index of UserStatDay that is being modified
             int dayToModIndex = 0;
 
-            //find todays day in list
-            for (int day = 0; day < userStatsDays.Length; day++)
+            //find dateToChange day in list
+            for (int day = userStatsDays.Length - 1; day >= 0; day--)
             {
-                if (userStatsDays[day].date.Date.Equals(today.Date))
+                if (userStatsDays[day].date.Date.Equals(dateToChange.Date))
                 {
                     dayInArray = true;
                     dayToModIndex = day;
                     Console.WriteLine($@"Found today in userStatDays at index {dayToModIndex}");
                     //end loop
-                    day = userStatsDays.Length;
+                    day = -1;
                 }
             }
 
@@ -177,7 +182,7 @@ namespace DiscordUserStatsBot
                 Console.WriteLine($@"Shifting day array");
 
                 //get difference of days between today and last entry in list
-                TimeSpan tS = today - userStatsDays[userStatsDays.Length - 1].date;
+                TimeSpan tS = dateToChange - userStatsDays[userStatsDays.Length - 1].date;
                 int daysDifferenceLastEntryAndToday = tS.Days;
 
                 //
@@ -227,14 +232,32 @@ namespace DiscordUserStatsBot
             return Task.CompletedTask;
         }
 
-        private void AddMessageToDayEntry()
+        //AVERAGES AND TOTALS
+
+        private TimeSpan GetTotalChatTime(UnitOfTime timeUnit)
         {
-            for (int day = 0; day < userStatsDays.Length; day++)
+            switch (timeUnit)
             {
-                //if found same day update that entry
-
-                //otherwise delete oldest dates (earlier index entries) scoot everything over the approppriate amount of days and create new dates appropriately
-
+                case UnitOfTime.day:
+                    return userStatsDays[GetIndexOfDay(DateTime.Now)].vCTime;
+                    break;
+                case UnitOfTime.week:                    
+                    //                  5                                                       -2
+                    for (int dayIndex = GetIndexOfDay(DateTime.Now); dayIndex >= 0 && dayIndex >= (GetIndexOfDay(DateTime.Now) - 7); dayIndex--)
+                    {
+                        //5 4 3 2 1 
+                    }
+                    return TimeSpan.Zero;
+                    break;
+                case UnitOfTime.month:
+                    return TimeSpan.Zero;
+                    break;
+                case UnitOfTime.alltime:
+                    return TimeSpan.Zero;
+                    break;
+                default:
+                    return TimeSpan.Zero;
+                    break;
             }
         }
 
