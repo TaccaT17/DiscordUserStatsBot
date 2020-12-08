@@ -16,13 +16,18 @@ using System.Threading.Tasks;
 
 //CURRENT TASK:
 
-//Debugging Issues: set up so records/calculates averages, records/calculates totals, etc.
+//Debugging Issues: 
 
 ///Completed
+///made userstat more efficient by working back
+///added some checks to make sure user not asking for future date
+///set up so records/calculates averages, records/calculates totals, etc.
+///make it so if if getting averages/totals of week, month, etc. and tracker got created sooner than that then just gives average/total since tracker made
 
 
 ///FUTURE TASKS:
-///set up so records specific days of the week, averages, etc.
+///get specific day of week/month stats
+///change it so averages/totals can take in a range of days
 ///Make it get the guild it's a part of on start up
 ///create roles to organize users into
 ///change so takes username and then if there is more than one user with that name prompts you for a discriminator. Also deals with nicknames.
@@ -59,7 +64,7 @@ namespace DiscordUserStatsBot
         private string ignoreAfterCommandString = "IACSn0ll";
 
         //dictionaries that record users and their corresponding UserStats
-        public Dictionary<ulong, UserStats> guildUserIDToStatIndex;
+        public Dictionary<ulong, UserStatTracker> guildUserIDToStatIndex;
         public Dictionary<string, ulong> guildUserNameToIDIndex;
 
         public event Func<SocketUser, Task> UserJoinedAVoiceChat;
@@ -167,7 +172,7 @@ namespace DiscordUserStatsBot
             }
             if (guildUserIDToStatIndex == null)
             {
-                guildUserIDToStatIndex = new Dictionary<ulong, UserStats>();
+                guildUserIDToStatIndex = new Dictionary<ulong, UserStatTracker>();
                 Console.WriteLine("New dictionary to save IDs and UserStats made.");
             }
 
@@ -202,7 +207,7 @@ namespace DiscordUserStatsBot
         private Task StartRecordingVCTime(SocketUser user)
         {
             //Get User stat class
-            UserStats tempUserStatsRef = GetUserStats(GetUserNamePlusDiscrim((SocketGuildUser)user));
+            UserStatTracker tempUserStatsRef = GetUserStats(GetUserNamePlusDiscrim((SocketGuildUser)user));
             //Record the time the player entered chat in their assossiated userStat class
             tempUserStatsRef.RecordGuildUserEnterVoiceChatTime();
 
@@ -211,7 +216,7 @@ namespace DiscordUserStatsBot
 
         private Task StopRecordingVCTime(SocketUser user)
         {
-            UserStats tempUserStatsRef = GetUserStats(GetUserNamePlusDiscrim((SocketGuildUser)user));
+            UserStatTracker tempUserStatsRef = GetUserStats(GetUserNamePlusDiscrim((SocketGuildUser)user));
             tempUserStatsRef.RecordGuildUserLeaveVoiceChatTime();
             saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
 
@@ -227,7 +232,7 @@ namespace DiscordUserStatsBot
                 return Task.CompletedTask;
             }
 
-            UserStats tempUserStatsRef;
+            UserStatTracker tempUserStatsRef;
 
             if(guildUserIDToStatIndex.TryGetValue(message.Author.Id, out tempUserStatsRef))
             {
@@ -339,7 +344,7 @@ namespace DiscordUserStatsBot
                 }
                 else
                 {
-                    UserStats tempUserStat = GetUserStats(fullUserName);
+                    UserStatTracker tempUserStat = GetUserStats(fullUserName);
 
                     if (tempUserStat == null)
                     {
@@ -390,7 +395,7 @@ namespace DiscordUserStatsBot
                 }
                 else
                 {
-                    UserStats tempUserStat = GetUserStats(fullUserName);
+                    UserStatTracker tempUserStat = GetUserStats(fullUserName);
 
                     if (tempUserStat == null)
                     {
@@ -501,7 +506,7 @@ namespace DiscordUserStatsBot
             else if (!(guildUserNameToIDIndex.ContainsKey(usernamePlusDiscrim)) && !(guildUserIDToStatIndex.ContainsKey(user.Id)))
             {
                 guildUserNameToIDIndex.Add(usernamePlusDiscrim, user.Id);
-                guildUserIDToStatIndex.Add(user.Id, new UserStats(this, usernamePlusDiscrim));
+                guildUserIDToStatIndex.Add(user.Id, new UserStatTracker(this, usernamePlusDiscrim));
                 Console.WriteLine($@"Created a new stat tracker for {usernamePlusDiscrim}");
                 //save dictionariess
                 saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
@@ -512,7 +517,7 @@ namespace DiscordUserStatsBot
             else if (guildUserNameToIDIndex.ContainsKey(usernamePlusDiscrim) && !(guildUserIDToStatIndex.ContainsKey(user.Id)))
             {
                 //caused by JSON dictionary having been deleted. Make a new id/user entry  
-                guildUserIDToStatIndex.Add(user.Id, new UserStats(this, usernamePlusDiscrim));
+                guildUserIDToStatIndex.Add(user.Id, new UserStatTracker(this, usernamePlusDiscrim));
 
                 saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
 
@@ -568,9 +573,9 @@ namespace DiscordUserStatsBot
         }
 
         //returns null if no user in the dictionary
-        private UserStats GetUserStats(string userName)
+        private UserStatTracker GetUserStats(string userName)
         {
-            UserStats userStatInst = null;
+            UserStatTracker userStatInst = null;
 
             //if user in guildUserNameIndex
             if (guildUserNameToIDIndex.ContainsKey(userName))
