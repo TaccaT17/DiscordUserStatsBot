@@ -39,7 +39,7 @@ namespace DiscordUserStatsBot
 
             File.WriteAllText(saveFilePath, jsonDataString);
 
-            Console.WriteLine("Saved!");
+            //Console.WriteLine("Saved!");
         }
 
         public Dictionary<K, T> LoadDictionary<K, T>(out Dictionary<K, T> dictionaryToLoad, string nameOfSaveFile)
@@ -50,7 +50,7 @@ namespace DiscordUserStatsBot
             {
                 string jsonDataString = File.ReadAllText(saveFilePath);
                 dictionaryToLoad = JsonConvert.DeserializeObject<Dictionary<K, T>>(jsonDataString);
-                Console.WriteLine("Loaded!");
+                //Console.WriteLine("Loaded!");
                 return dictionaryToLoad;
             }
             else

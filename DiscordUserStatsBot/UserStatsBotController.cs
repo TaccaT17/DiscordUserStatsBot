@@ -16,18 +16,18 @@ using System.Threading.Tasks;
 
 //CURRENT TASK:
 
-//Debugging Issues: 
+//Debugging Issues: set up so records/calculates averages, records/calculates totals, etc.
+
+///Completed
+
 
 ///FUTURE TASKS:
-///Deal with user changing username
 ///set up so records specific days of the week, averages, etc.
 ///Make it get the guild it's a part of on start up
 ///create roles to organize users into
-///make totalmessages ignore bot commands
-///make it so only saves name to id dictionary when necessary (new user, name change)
 ///change so takes username and then if there is more than one user with that name prompts you for a discriminator. Also deals with nicknames.
-///make it so you don't have to restart bot to call users who have changed their names?
 ///Allow people to also search for userstats with an ID
+///When user changes their name this bots connection to the guild doesn't realise this AKA I still get the old name if I ask it to print the SocketGuildUser name. Is fixed when I restart the Bot. Same thing occurs with nickname. If I think a user has changed their name reset connetion?
 
 namespace DiscordUserStatsBot
 {
@@ -69,6 +69,15 @@ namespace DiscordUserStatsBot
 
         private SaveHandler saveHandlerRef;
 
+        //bool to stop commands for this bot from being recorded in UserStat
+        private bool wasBotCommand;
+
+        //Commands
+        private string GreetCommand = "Hi", 
+            prefixCommand = "Prefix", 
+            totalChatTimeCommand = "TotalChatTime", 
+            totalMessagesSentCommand = "TotalMessagesSent";
+
         //--------------------------------------------------------------------------------------------------------------------------------------------------------------- 
         #endregion
 
@@ -107,6 +116,8 @@ namespace DiscordUserStatsBot
 
             await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();
+
+            wasBotCommand = false;
 
             // wait for an indefinite amount of time
             await Task.Delay(-1);
@@ -202,8 +213,6 @@ namespace DiscordUserStatsBot
         {
             UserStats tempUserStatsRef = GetUserStats(GetUserNamePlusDiscrim((SocketGuildUser)user));
             tempUserStatsRef.RecordGuildUserLeaveVoiceChatTime();
-            tempUserStatsRef.CalculateAndUpdateUserVCTime();
-            saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
             saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
 
             return Task.CompletedTask;
@@ -211,13 +220,19 @@ namespace DiscordUserStatsBot
 
         private Task RecordMessageSent(SocketMessage message)
         {
+            //don't count bot commands as messages
+            if (wasBotCommand)
+            {
+                wasBotCommand = false;
+                return Task.CompletedTask;
+            }
+
             UserStats tempUserStatsRef;
 
             if(guildUserIDToStatIndex.TryGetValue(message.Author.Id, out tempUserStatsRef))
             {
                 tempUserStatsRef.RecordThisUserSentAMessage(message);
 
-                saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
                 saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
             }
 
@@ -232,7 +247,7 @@ namespace DiscordUserStatsBot
             #region MessageFilter
             //--------------------------------------------------------------------------------------------------
             //rule out messages that don't have bot prefix
-            if (!message.Content.StartsWith(botCommandPrefix))                   //BOT PREFIX
+            if (!message.Content.StartsWith(botCommandPrefix))
             {
                 //Console.WriteLine("Message is not a bot command");
                 return Task.CompletedTask;
@@ -270,13 +285,14 @@ namespace DiscordUserStatsBot
             #endregion
 
             #region COMMANDS
-            //REMEMBER: NO SPACES OR CAPITALS ALLOWED IN COMMANDS
+            //REMEMBER: NO SPACES ALLOWED IN COMMANDS
             //--------------------------------------------------------------------------------------------------
 
             //COMMANDS
             //------------------------------------------
-            if (command.Equals("hi"))
+            if (command.Equals(GreetCommand.ToLower()))
             {
+                wasBotCommand = true;
                 message.Channel.SendMessageAsync("Hello fellow user.");
                 return Task.CompletedTask;
             }
@@ -287,8 +303,10 @@ namespace DiscordUserStatsBot
             string stringAfterCommand = GetStringAfterCommand(message, lengthOfCommand).Result;
 
             //TODO: TEST AGAIN
-            if (command.Equals("prefix"))
+            if (command.Equals(prefixCommand.ToLower()))
             {
+                wasBotCommand = true;
+
                 Console.WriteLine("Prefix command called");
                 //if nothing after prefix then print out prefix otherwise set the prefix to 1st character after space
                 if (stringAfterCommand.Equals(ignoreAfterCommandString))
@@ -307,8 +325,10 @@ namespace DiscordUserStatsBot
 
             //get the total voice chat time of user
             //!totalchattime <username#0000> AKA <tag> //OBSELETE: OR !totalchattime userID
-            else if (command.Equals("totalchattime"))
+            else if (command.Equals(totalChatTimeCommand.ToLower()))
             {
+                wasBotCommand = true;
+
                 string fullUserName = ReformatStringToUsername(stringAfterCommand).Result;
 
                 //if not valid string
@@ -356,8 +376,10 @@ namespace DiscordUserStatsBot
                 }
             }
             //get the total messages sent by user
-            else if (command.Equals("totalmessagessent"))
+            else if (command.Equals(totalMessagesSentCommand.ToLower()))
             {
+                wasBotCommand = true;
+
                 string fullUserName = ReformatStringToUsername(stringAfterCommand).Result;
 
                 //if not valid string
@@ -378,7 +400,7 @@ namespace DiscordUserStatsBot
                         return Task.CompletedTask;
                     }
 
-                    message.Channel.SendMessageAsync($@"{tempUserStat.UsersFullName} has sent {tempUserStat.TotalMessagesSent} messages!");
+                    message.Channel.SendMessageAsync($@"{tempUserStat.UsersFullName} has sent {tempUserStat.TotalMessagesSent} meaningful messages!");
                 }
             }
 
@@ -480,7 +502,10 @@ namespace DiscordUserStatsBot
             {
                 guildUserNameToIDIndex.Add(usernamePlusDiscrim, user.Id);
                 guildUserIDToStatIndex.Add(user.Id, new UserStats(this, usernamePlusDiscrim));
-                Console.WriteLine($@"Created a new userStat for {usernamePlusDiscrim}");
+                Console.WriteLine($@"Created a new stat tracker for {usernamePlusDiscrim}");
+                //save dictionariess
+                saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
+                saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
                 return Task.CompletedTask;
             }
             //if just doesn't have id/stat entry make a new one (prior info unfortunately lost) 
@@ -488,6 +513,8 @@ namespace DiscordUserStatsBot
             {
                 //caused by JSON dictionary having been deleted. Make a new id/user entry  
                 guildUserIDToStatIndex.Add(user.Id, new UserStats(this, usernamePlusDiscrim));
+
+                saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
 
                 Console.WriteLine($@"ID/UserStat dictionary was at some point deleted. Therefore making a fresh ID/UserStat entry for {usernamePlusDiscrim}.");
 
@@ -499,13 +526,16 @@ namespace DiscordUserStatsBot
                 //caused by JSON dictionary having been deleted OR user changed their name OR both
                 //...need to either update username, remake JSON dictionary or both
 
+                bool userChangedTheirName = false;
+
                 //create loop that looks for a corresponding ID entry in username/ID dictionary
                 foreach (var item in guildUserNameToIDIndex)
                 {
                     //if you find the same ID...
-                    if (item.Value.Equals(user.Id))
+                    if (!userChangedTheirName && item.Value.Equals(user.Id))
                     {
                         //...user changed their name:
+                        userChangedTheirName = true;
 
                         //replace that entry with current username
                         guildUserNameToIDIndex.Remove(item.Key);
@@ -515,13 +545,18 @@ namespace DiscordUserStatsBot
                         guildUserIDToStatIndex[user.Id].UpdateUsersName((SocketGuildUser)user);
 
                         Console.WriteLine($@"{usernamePlusDiscrim} changed their username! Replaced their Username/ID entry {item.Key}, {item.Value} with {usernamePlusDiscrim}, {user.Id}");
-                        return Task.CompletedTask;
                     }
                 }
 
                 //...otherwise JSON dict has been deleted so create fresh entry
-                guildUserNameToIDIndex.Add(usernamePlusDiscrim, user.Id);
-                Console.WriteLine($@"Username/ID dictionary was at some point deleted. Therefore making a fresh Username/ID entry for {usernamePlusDiscrim}.");
+                if (!userChangedTheirName)
+                {
+                    guildUserNameToIDIndex.Add(usernamePlusDiscrim, user.Id);
+                    Console.WriteLine($@"Username/ID dictionary was at some point deleted. Therefore making a fresh Username/ID entry for {usernamePlusDiscrim}.");
+                }
+
+                saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
+
                 return Task.CompletedTask;
             }
         }
@@ -610,13 +645,6 @@ namespace DiscordUserStatsBot
 
             Console.WriteLine("No matching user in chat");
             return false;
-        }
-
-        //So that I don't get an error at Bot start up
-        private Task MessageEventCompleted(SocketMessage message)
-        {
-            Console.WriteLine("User Sent A Message");
-            return Task.CompletedTask;
         }
 
         #endregion
