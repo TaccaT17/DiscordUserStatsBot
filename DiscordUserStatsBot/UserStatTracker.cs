@@ -8,17 +8,11 @@ using System.Threading.Tasks;
 
 namespace DiscordUserStatsBot
 {
-    class UserStatTracker
+    class UserStatTracker: IComparable<UserStatTracker>
     {
         //Will log stats up to the last 30 days
 
-        public enum Past
-        {
-            day = 1,
-            week = 7,
-            month = 30,
-            year = 365
-        }
+        
 
         #region VARIABLES
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -26,6 +20,8 @@ namespace DiscordUserStatsBot
         private UserStatsBotController myController;
         [Newtonsoft.Json.JsonProperty] //JSON by default only serializes public members. This is the work around
         private string usersFullName;
+        [Newtonsoft.Json.JsonProperty]
+        public ulong usersID;
         [Newtonsoft.Json.JsonProperty]
         private TimeSpan totalVCTime;
         [Newtonsoft.Json.JsonProperty]
@@ -41,9 +37,12 @@ namespace DiscordUserStatsBot
         //records users stats for each day for the past 30 days. Goes from OldestDay -> NewestDay
         [Newtonsoft.Json.JsonProperty]
         private UserStatDay[] userStatsDays;
-        [Newtonsoft.Json.JsonProperty]
-        //private UserStatDay dayRecordingStatsFor;
-        
+
+        //rank config
+        public static RankConfig rankConfig;
+
+        //save role ID?
+
         //public getters
         public int TotalMessagesSent {
             get {return totalMessagesSent; }
@@ -64,15 +63,15 @@ namespace DiscordUserStatsBot
             get { return usersFullName; }
         }
 
-
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion
 
         //CONSTRUCTOR
-        public UserStatTracker(UserStatsBotController controllerRef, string userName)
+        public UserStatTracker(UserStatsBotController controllerRef, string userName, ulong userID)
         {
             myController = controllerRef;
             usersFullName = userName;
+            usersID = userID;
 
             //set defaults to zero
             totalVCTime = TimeSpan.Zero;
@@ -92,7 +91,18 @@ namespace DiscordUserStatsBot
 
             dateTrackerCreated = DateTime.Now;
 
-            AddFakeData();
+            if (!rankConfig.initialized)
+            {
+                //TODO: CHANGE to chattime
+                //by default ranks users by average voice chat time in the past month
+                rankConfig.rankType = RankConfig.RankType.messages;
+                rankConfig.rankBy = RankConfig.RankByType.average;
+                rankConfig.rankTime = RankConfig.RankTimeType.month;
+                rankConfig.initialized = true;
+            }
+            
+
+            //AddFakeData();
 
         }
 
@@ -127,9 +137,9 @@ namespace DiscordUserStatsBot
 
             userStatsDays[GetIndexOfDay(DateTime.Now)].messagesSent++;
 
-            PrintStatDaysArray();
+            //PrintStatDaysArray();
 
-            PrintData();
+            //PrintData();
 
             return Task.CompletedTask;
         }
@@ -207,7 +217,7 @@ namespace DiscordUserStatsBot
 
         //Can get all time totals from member variables
 
-        private TimeSpan GetAverageChatTime(int pastNumberOfDays)
+        public TimeSpan GetAverageChatTime(int pastNumberOfDays)
         {
             if (pastNumberOfDays > userStatsDays.Length)
             {
@@ -222,7 +232,7 @@ namespace DiscordUserStatsBot
 
             return GetTotalChatTime(pastNumberOfDays) / pastNumberOfDays;
         }
-        private float GetAverageMessages(int pastNumberOfDays)
+        public float GetAverageMessages(int pastNumberOfDays)
         {
             if (pastNumberOfDays > userStatsDays.Length)
             {
@@ -237,7 +247,7 @@ namespace DiscordUserStatsBot
 
             return GetTotalMessages(pastNumberOfDays) / (float)pastNumberOfDays;
         }
-        private TimeSpan GetTotalChatTime(int pastNumberOfDays)
+        public TimeSpan GetTotalChatTime(int pastNumberOfDays)
         {
             if (pastNumberOfDays > userStatsDays.Length)
             {
@@ -265,7 +275,7 @@ namespace DiscordUserStatsBot
 
             return totalCT;
         }
-        private int GetTotalMessages(int pastNumberOfDays)
+        public int GetTotalMessages(int pastNumberOfDays)
         {
             if (pastNumberOfDays > userStatsDays.Length)
             {
@@ -293,7 +303,7 @@ namespace DiscordUserStatsBot
 
             return totalMessages;
         }
-        private TimeSpan GetTotalAverageChatTime()
+        public TimeSpan GetTotalAverageChatTime()
         {
             int daysSinceTrackerCreated = (DateTime.Now - dateTrackerCreated).Days;
             if (daysSinceTrackerCreated < 1)
@@ -302,7 +312,7 @@ namespace DiscordUserStatsBot
             }
             return totalVCTime / (float)daysSinceTrackerCreated;
         }
-        private float GetTotalAverageMessages()
+        public float GetTotalAverageMessages()
         {
             int daysSinceTrackerCreated = (DateTime.Now - dateTrackerCreated).Days;
             if (daysSinceTrackerCreated < 1)
@@ -373,10 +383,90 @@ namespace DiscordUserStatsBot
 
         //---------------------------------------------------------------------
         #endregion
+        
+        //INTERFACE IMPLEMENTATION
+        //---------------------------------------------------------------------
+        
+        //default compares both messages and chat by month
+        public int CompareTo(UserStatTracker other)
+        {
+            //rank by average messages
+            if (rankConfig.rankType.Equals(RankConfig.RankType.messages) && rankConfig.rankBy.Equals(RankConfig.RankByType.average))
+            {
+                if(this.GetAverageMessages((int)rankConfig.rankTime) > other.GetAverageMessages((int)rankConfig.rankTime))
+                {
+                    //higher rank
+                    return -1;
+                }
+                else if(this.GetAverageMessages((int)rankConfig.rankTime) < other.GetAverageMessages((int)rankConfig.rankTime))
+                {
+                    //lower rank
+                    return 1;
+                }
+                else
+                {
+                    //same rank
+                    return 0;
+                }
+            }
+            //rank by average voice chat time
+            else if (rankConfig.rankType.Equals(RankConfig.RankType.voiceChatTime) && rankConfig.rankBy.Equals(RankConfig.RankByType.average))
+            {
+                if (this.GetAverageChatTime((int)rankConfig.rankTime) > other.GetAverageChatTime((int)rankConfig.rankTime))
+                {
+                    return -1;
+                }
+                else if (this.GetAverageChatTime((int)rankConfig.rankTime) < other.GetAverageChatTime((int)rankConfig.rankTime))
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            //rank by total messages
+            else if (rankConfig.rankType.Equals(RankConfig.RankType.messages) && rankConfig.rankBy.Equals(RankConfig.RankByType.total))
+            {
+                if (this.GetTotalMessages((int)rankConfig.rankTime) > other.GetTotalMessages((int)rankConfig.rankTime))
+                {
+                    return -1;
+                }
+                else if (this.GetTotalMessages((int)rankConfig.rankTime) < other.GetTotalMessages((int)rankConfig.rankTime))
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            //rank by total voice chat time
+            else if (rankConfig.rankType.Equals(RankConfig.RankType.voiceChatTime) && rankConfig.rankBy.Equals(RankConfig.RankByType.total))
+            {
+                if (this.GetTotalChatTime((int)rankConfig.rankTime) > other.GetTotalChatTime((int)rankConfig.rankTime))
+                {
+                    return -1;
+                }
+                else if (this.GetTotalChatTime((int)rankConfig.rankTime) < other.GetTotalChatTime((int)rankConfig.rankTime))
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+
+            return 1;
+        }
+
+        //---------------------------------------------------------------------
+
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion
 
-        //STRUCT
+        //STRUCTS
         private struct UserStatDay
         {
             public int messagesSent;
@@ -390,6 +480,33 @@ namespace DiscordUserStatsBot
                 vCTime = TimeSpan.Zero;
             }
         }
+
+        public struct RankConfig
+        {
+            public enum RankType
+            {
+                messages,
+                voiceChatTime
+            }
+            public enum RankByType
+            {
+                average,
+                total
+            }
+            public enum RankTimeType
+            {
+                day = 1,
+                week = 7,
+                month = 30
+            }
+
+            public bool initialized;
+            public RankType rankType;
+            public RankByType rankBy;
+            public RankTimeType rankTime;
+        }
+
+        
 
     }
 }

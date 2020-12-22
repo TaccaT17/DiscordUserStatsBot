@@ -15,6 +15,7 @@ namespace DiscordUserStatsBot
     {
         //VARIABLES
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
+        
         private string fileFolderPath;
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -34,8 +35,6 @@ namespace DiscordUserStatsBot
             string jsonDataString = JsonConvert.SerializeObject(dictionaryToSave, Formatting.Indented);
 
             string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + ".json";
-            
-            //Console.WriteLine($@"Dictionary to save is called {nameOfSaveFile}");
 
             File.WriteAllText(saveFilePath, jsonDataString);
 
@@ -60,6 +59,37 @@ namespace DiscordUserStatsBot
                 return dictionaryToLoad;
             }
         }
+
+        public void SaveArray<T>(T[] arrayToSave, string nameOfSaveFile)
+        {
+            string jsonDataString = JsonConvert.SerializeObject(arrayToSave, Formatting.Indented);
+
+            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + ".json";
+
+            File.WriteAllText(saveFilePath, jsonDataString);
+
+            //Console.WriteLine("Saved!");
+        }
+
+        public T[] LoadArray<T>(out T[] arrayToLoad, string nameOfSaveFile)
+        {
+            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + ".json";
+
+            if (File.Exists(saveFilePath))
+            {
+                string jsonDataString = File.ReadAllText(saveFilePath);
+                arrayToLoad = JsonConvert.DeserializeObject<T[]>(jsonDataString);
+                //Console.WriteLine("Loaded!");
+                return arrayToLoad;
+            }
+            else
+            {
+                Console.WriteLine($@"Load file '{nameOfSaveFile}' doesn't exist");
+                arrayToLoad = null;
+                return arrayToLoad;
+            }
+        }
+
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion
     }
