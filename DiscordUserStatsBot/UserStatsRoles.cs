@@ -124,6 +124,8 @@ namespace DiscordUserStatsBot
                         if (usersExistingRoles.Id.Equals(rankRoles[rankRole].Id))
                         {
                             hasRole = true;
+                            Console.WriteLine($@"User already has appropriate role");
+
                         }
                         //if the user has another ranked role remove that one
                         //TODO: is iterationg more times than necessary
@@ -134,6 +136,7 @@ namespace DiscordUserStatsBot
                                 if (usersExistingRoles.Id.Equals(rankRoles[role].Id))
                                 {
                                     await guildRef.GetUser(rankedUsers[rankedUserIndex]).RemoveRoleAsync(guildRef.GetRole(rankRoles[role].Id));
+                                    Console.WriteLine($@"Removed unnecesary rank role");
                                 }
                             }
                         }
@@ -143,6 +146,7 @@ namespace DiscordUserStatsBot
                     {
                         //if user doesnt have role assign it
                         await guildRef.GetUser(rankedUsers[rankedUserIndex]).AddRoleAsync(guildRef.GetRole(rankRoles[rankRole].Id));
+                        Console.WriteLine($@"Gave user appropriate rank role");
                     }
 
                     rankedUserIndex++;
