@@ -41,6 +41,10 @@ namespace DiscordUserStatsBot
         //rank config
         public static RankConfig rankConfig;
 
+        //these are only used when trying to sort by both messages and vcTime
+        public int messageRankPosition;
+        public int vcTimeRankPosition;
+
         //save role ID?
 
         //public getters
@@ -93,9 +97,8 @@ namespace DiscordUserStatsBot
 
             if (!rankConfig.initialized)
             {
-                //TODO: CHANGE to chattime
-                //by default ranks users by average voice chat time in the past month
-                rankConfig.rankType = RankConfig.RankType.messages;
+                //by default ranks users by average messages and vcTime in the past month
+                rankConfig.rankType = RankConfig.RankType.mgsAndVCT;
                 rankConfig.rankBy = RankConfig.RankByType.average;
                 rankConfig.rankTime = RankConfig.RankTimeType.month;
                 rankConfig.initialized = true;
@@ -457,7 +460,26 @@ namespace DiscordUserStatsBot
                     return 0;
                 }
             }
-
+            //rank by average both
+            if (rankConfig.rankType.Equals(RankConfig.RankType.mgsAndVCT))
+            {
+                //smaller number = higher rank
+                if ((this.messageRankPosition + this.vcTimeRankPosition) < (other.messageRankPosition + other.vcTimeRankPosition))
+                {
+                    //this is higher rank
+                    return -1;
+                }
+                else if ((this.messageRankPosition + this.vcTimeRankPosition) > (other.messageRankPosition + other.vcTimeRankPosition))
+                {
+                    //this is lower rank
+                    return 1;
+                }
+                else
+                {
+                    //this is same rank
+                    return 0;
+                }
+            }
             return 1;
         }
 
@@ -486,7 +508,8 @@ namespace DiscordUserStatsBot
             public enum RankType
             {
                 messages,
-                voiceChatTime
+                voiceChatTime,
+                mgsAndVCT
             }
             public enum RankByType
             {

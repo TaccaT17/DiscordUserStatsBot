@@ -54,7 +54,7 @@ namespace DiscordUserStatsBot
             defaultRoleColors = new Discord.Color[] { Discord.Color.Orange, Discord.Color.Purple, Discord.Color.Blue, Discord.Color.Green, Discord.Color.LighterGrey };
             defaultRoleNames = new string[] { "Apexian Exarch", "High Baroness", "Earl", "Low Inquisitor", "Simple Sentinel" };
             //TODO: Change back to                3, 5, 10, 30, 100
-            defaultRoleMemberAmount = new int[] { 1, 1, 1, 1, 1 };
+            defaultRoleMemberAmount = new int[] { 1, 1, 1, 2, 3 };
             //make default array of UserStatRole struct
             rankRoles = new UserStatRole[defaultNumberOfRoles];
             for (int index = 0; index < rankRoles.Length; index++)
@@ -163,7 +163,6 @@ namespace DiscordUserStatsBot
         /// </summary>
         public void RankUsers()
         {
-
             //ensure all recorded ids in rankedUsers list
             foreach(KeyValuePair<ulong, UserStatTracker> item in myCont.guildUserIDToStatIndex)
             {
@@ -181,6 +180,40 @@ namespace DiscordUserStatsBot
                 userStatTrackersList.Add(myCont.guildUserIDToStatIndex[rankedUsers[iD]]);
             }
 
+
+            //TODO: make this more efficient by calling recurring function (funciton calls itself)
+            //if sorting by both messages and voice chat time
+            if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.mgsAndVCT))
+            {
+
+                //create list that is ranked by messages
+                //create list that is ranked by vctime
+                List<UserStatTracker> sortedByMessages = new List<UserStatTracker>();
+                List<UserStatTracker> sortedByVCTime= new List<UserStatTracker>();
+                for (int index = 0; index < userStatTrackersList.Count; index++)
+                {
+                    sortedByMessages.Add(userStatTrackersList[index]);
+                    sortedByVCTime.Add(userStatTrackersList[index]);
+                }
+
+                UserStatTracker.rankConfig.rankType = UserStatTracker.RankConfig.RankType.messages;
+                sortedByMessages.Sort();
+
+                UserStatTracker.rankConfig.rankType = UserStatTracker.RankConfig.RankType.voiceChatTime;
+                sortedByVCTime.Sort();
+
+                for (int index = 0; index < userStatTrackersList.Count; index++)
+                {
+                    //give rank position based off of index
+                    sortedByMessages[index].messageRankPosition = index;
+                    sortedByVCTime[index].vcTimeRankPosition = index;
+                }
+
+                UserStatTracker.rankConfig.rankType = UserStatTracker.RankConfig.RankType.mgsAndVCT;
+                //now when userStatTrackerList sorts will have accurate data
+
+            }
+
             //NOTE:
             //will use default comparer AKA "CompareTo()" function in UserStatTrackerClass
             //comparer configured by static struct "rankConfig" in UserStatTrackerClass
@@ -196,7 +229,7 @@ namespace DiscordUserStatsBot
             return;
         }        
 
-        public void ChangeRoleMaxUsers(int newMaxUsers)
+        public void ChangeRoleMaxUsers(int newMaxUsers, ulong roleID)
         {
 
         }
