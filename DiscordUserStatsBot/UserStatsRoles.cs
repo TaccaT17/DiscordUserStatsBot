@@ -183,7 +183,7 @@ namespace DiscordUserStatsBot
 
             //TODO: make this more efficient by calling recurring function (funciton calls itself)
             //if sorting by both messages and voice chat time
-            if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.mgsAndVCT))
+            if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.msgAndVCT))
             {
 
                 //create list that is ranked by messages
@@ -209,7 +209,7 @@ namespace DiscordUserStatsBot
                     sortedByVCTime[index].vcTimeRankPosition = index;
                 }
 
-                UserStatTracker.rankConfig.rankType = UserStatTracker.RankConfig.RankType.mgsAndVCT;
+                UserStatTracker.rankConfig.rankType = UserStatTracker.RankConfig.RankType.msgAndVCT;
                 //now when userStatTrackerList sorts will have accurate data
 
             }
@@ -255,6 +255,27 @@ namespace DiscordUserStatsBot
                 }
             }
             return;
+        }
+
+        /// <summary>
+        /// Returns -1 if no users in ranked list with that ID.
+        /// </summary>
+        /// <param name="userID"></param>
+        /// <returns></returns>
+        public int GetUsersRank(ulong userID)
+        {
+            int rank = -1;
+
+            if(rankedUsers != null)
+            {
+                rank = rankedUsers.IndexOf(userID);
+            }
+            else
+            {
+                Console.WriteLine("Error: rankedUsers null");
+            }
+
+            return rank;
         }
 
         /// <summary>

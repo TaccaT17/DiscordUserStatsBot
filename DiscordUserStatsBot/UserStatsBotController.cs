@@ -20,19 +20,21 @@ using System.Timers;
 //Debugging Issues: 
 
 ///Completed
-///Added ranking by both messages and vctime
-///Moved commands to seperate class
-///made it so you can change the time interval between when user roles assigned
-///made it so saves roles when they are changed
+///fixed message recording bug due to out of order event subscription
+///Added Command to set how ranking users (msg, vc, both)
+///added get users rank command
+///added command to change rankRole memberlimit
+///made it so allows for failed capitalization when querying username
 
 
 
 ///FUTURE TASKS:
+///add command to rank by averages vs. totals, day, week, month
+///save/load userRank list
 ///Make it get the guild it's a part of on start up AKA make it so it deals with multiple guilds at once
 ///get specific day of week/month stats
 ///change it so averages/totals can take in a range of days
 ///Make it get the guild it's a part of on start up AKA make it so it deals with multiple guilds at once
-///create roles to organize users into
 ///change so takes username and then if there is more than one user with that name prompts you for a discriminator. Also deals with nicknames.
 ///Allow people to also search for userstats with an ID
 ///When user changes their name this bots connection to the guild doesn't realise this AKA I still get the old name if I ask it to print the SocketGuildUser name. Is fixed when I restart the Bot. Same thing occurs with nickname. If I think a user has changed their name reset connetion?
@@ -48,7 +50,7 @@ using System.Timers;
 ///REWRITE EVERYTHING NOW THAT YOU CAN GET OFFLINE USERS
 ///Get best users based off of messages + voice chat
 ///add admin limitations to commands
-///When deleted role re-created ensure that it has correct position
+///save rank config
 /////add commands (see "help" command)
 
 namespace DiscordUserStatsBot
@@ -118,15 +120,14 @@ namespace DiscordUserStatsBot
 
             client.UserVoiceStateUpdated += VoiceChatChange;
 
-            client.Ready += BotSetUp; //Ready is fired when the bot connects to server
-
             //Times when the bot will create an entry for a user
             client.UserJoined += AddNewUserToStatBotIndex;
             client.MessageReceived += AddNewUserToStatBotIndex;
             UserJoinedAVoiceChat += AddNewUserToStatBotIndex;
 
+            client.Ready += BotSetUp; //Ready is fired when the bot connects to server
+
             //For record user stats
-            client.MessageReceived += RecordMessageSent;
             UserJoinedAVoiceChat += StartRecordingVCTime;
             UserLeftAllVoiceChats += StopRecordingVCTime;
 
@@ -138,10 +139,6 @@ namespace DiscordUserStatsBot
 
             await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();
-
-            
-
-
 
             // wait for an indefinite amount of time
             await Task.Delay(-1);
@@ -189,6 +186,8 @@ namespace DiscordUserStatsBot
             {
                 commandHandlerRef = new CommandHandler(this, guildRef);
                 client.MessageReceived += commandHandlerRef.CommandHandlerFunc; //adds CommandHandler func to MessageRecieved event delegate. Therefore CommandHandler will be executed anytime a message is posted on the discord server
+                //for recording user stats
+                client.MessageReceived += RecordMessageSent;
                 commandHandlerRef.wasBotCommand = false;
             }
                 
@@ -221,14 +220,11 @@ namespace DiscordUserStatsBot
             //save roles
             userStatRolesRef.SaveRoles(guildRef, saveHandlerRef);
 
-
-
             //calculate/assign user roles
-
             userStatRolesRef.AssignRoles(guildRef);
 
             //default
-            assignRolesTimeSpan = new TimeSpan(0, 0, 36);
+            assignRolesTimeSpan = new TimeSpan(0, 0, 5);
             AssignRolesTimer(assignRolesTimeSpan);
 
             SocketGuildUser user;
@@ -407,6 +403,7 @@ namespace DiscordUserStatsBot
         {
             UserStatTracker userStatInst = null;
 
+            //TODO: make this function more efficient
             //if user in guildUserNameIndex
             if (guildUserNameToIDIndex.ContainsKey(userName))
             {
@@ -414,17 +411,39 @@ namespace DiscordUserStatsBot
             }
             else
             {
-                Console.WriteLine("The bot has no recording of a user with that name: userstat");
+                //see if they just weren't capitalizing correctly
+                foreach(KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
+                {
+                    if (item.Key.ToLower().Equals(userName.ToLower()))
+                    {
+                        userName = item.Key;
+                        Console.WriteLine("Name was simply not in correct casing");
+                    }
+                }
+
+                if (guildUserNameToIDIndex.ContainsKey(userName))
+                {
+                    userStatInst = guildUserIDToStatIndex[guildUserNameToIDIndex[userName]];
+                }
+                else
+                {
+                    Console.WriteLine("The bot has no recording of a user with that name: userstat");
+                }
             }
 
             return userStatInst;
         }
 
-        //returns 0 if no corresponding id in dictionary
+        /// <summary>
+        /// returns 0 if no corresponding id in dictionary
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
         public ulong GetUserIDFromName(string userName)
         {
             ulong userID = 0;
 
+            //TODO: make more efficient
             //if user in guildUserNameIndex
             if (guildUserNameToIDIndex.ContainsKey(userName))
             {
@@ -432,7 +451,24 @@ namespace DiscordUserStatsBot
             }
             else
             {
-                Console.WriteLine("The bot has no recording of a user with that name: id");
+                //see if they just weren't capitalizing correctly
+                foreach (KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
+                {
+                    if (item.Key.ToLower().Equals(userName.ToLower()))
+                    {
+                        userName = item.Key;
+                        Console.WriteLine("Name was simply not in correct casing");
+                    }
+                }
+
+                if (guildUserNameToIDIndex.ContainsKey(userName))
+                {
+                    userID = guildUserNameToIDIndex[userName];
+                }
+                else
+                {
+                    Console.WriteLine("The bot has no recording of a user with that name: id");
+                }
             }
 
             return userID;

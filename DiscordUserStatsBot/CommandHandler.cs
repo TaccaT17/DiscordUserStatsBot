@@ -21,7 +21,10 @@ namespace DiscordUserStatsBot
             totalChatTimeCommand = "TotalChatTime",
             totalMessagesSentCommand = "TotalMessagesSent",
             setRankTimeIntervalCommand = "SetRankTimeInterval",
-            setUsersPerRankCommand = "UsersPerRank";
+            membersPerRankCommand = "MembersPerRank",
+            changeRankCriteria = "RankBy",
+            getUserRankCommand = "UserRank",
+            updateRanksCommand = "UpdateRanks";
 
         //bool to stop commands for this bot from being recorded in UserStat
         public bool wasBotCommand;
@@ -98,14 +101,16 @@ namespace DiscordUserStatsBot
                 message.Channel.SendMessageAsync("Commands are: \n" +
                     greetCommand + " - the bot greets you\n" +
                     prefixCommand + " (<newPrefix>) - get the botPrefix or (optionally) set it\n" +
-                    totalChatTimeCommand + " <username#0000> - get the given users total recorded guild time chat\n" +
-                    totalMessagesSentCommand + " <username#0000> - get the users total recorded guild messages sent\n" +
+                    totalChatTimeCommand + " <username#0000> - get a given users total recorded guild time chat\n" +
+                    totalMessagesSentCommand + " <username#0000> - get a given users total recorded guild messages sent\n" +
                     setRankTimeIntervalCommand + " <hours> - change interval between when users are ranked and assigned the appropriate role. This command resets the timer. \n" +
+                    changeRankCriteria + " <Msg, Vc, or Msg&Vc> - set whether people are ranked by messages, voice chat or both. \n" +
+                    getUserRankCommand + " <username#0000> - get a given users rank\n" +
+                    updateRanksCommand + " - recalculates everyones rank\n" +
+                    membersPerRankCommand + " <RankRole>, <Amount> - changes the number of users in a RankRole to the given Amount\n" +
+
                     //TODO:
                     //set number of users per given role
-                    //set rank users by chat, messages or both
-                    //get users rank (is rankedUsers index + 1)
-                    //update user ranks
                     "");
             }
 
@@ -141,6 +146,7 @@ namespace DiscordUserStatsBot
                 float hours;
                 if (!(float.TryParse(stringAfterCommand, out hours)))       //TryParse returns false if not an int
                 {
+                    message.Channel.SendMessageAsync($@"Sorry, but '{stringAfterCommand}' is not a number.");
                     return Task.CompletedTask;
                 }
                 else
@@ -149,17 +155,71 @@ namespace DiscordUserStatsBot
                     myCont.ChangeAssignRolesInterval(tP);
                 }
 
+                
+
                 return Task.CompletedTask;
             }
-            else if (command.Equals(setUsersPerRankCommand.ToLower()))
+            else if (command.Equals(changeRankCriteria.ToLower()))
             {
                 wasBotCommand = true;
 
-                //TODO:
-                //Parse role rank and integer inputs
-                //Get rank, set amount of users to integer
+                if (stringAfterCommand.ToLower().Equals("Msg".ToLower()))
+                {
+                    UserStatTracker.ChangeRankType(UserStatTracker.RankConfig.RankType.messages);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Vc".ToLower()))
+                {
+                    UserStatTracker.ChangeRankType(UserStatTracker.RankConfig.RankType.voiceChatTime);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Msg&Vc".ToLower()))
+                {
+                    UserStatTracker.ChangeRankType(UserStatTracker.RankConfig.RankType.msgAndVCT);
+                }
+                else
+                {
+                    message.Channel.SendMessageAsync($@"Sorry, that was an invalid command. Not sure which one of us is the idiot.");
+                }
+                //update ranks to reflect changed rank criteria
+                myCont.userStatRolesRef.AssignRoles(guildRef);
 
                 return Task.CompletedTask;
+            }
+            else if (command.Equals(updateRanksCommand.ToLower()))
+            {
+                wasBotCommand = true;
+
+                myCont.userStatRolesRef.AssignRoles(guildRef);
+
+            }
+            else if (command.Equals(getUserRankCommand.ToLower()))
+            {
+                wasBotCommand = true;
+
+                string fullUserName = ReformatStringToUsername(stringAfterCommand).Result;
+
+                if (fullUserName == null)
+                {
+                    message.Channel.SendMessageAsync($@"Sorry that isn't a valid username#0000. Did you remember the discriminator?");
+                    return Task.CompletedTask;
+                }
+                else
+                {
+                    UserStatTracker tempUserStat = myCont.GetUserStats(fullUserName);
+
+                    if (tempUserStat == null)
+                    {
+                        message.Channel.SendMessageAsync($@"Sorry there is no data on {fullUserName}.");
+                        //This could possibly be a logic error: one of the two dictionaries is lacking an entry for this user
+
+                        return Task.CompletedTask;
+                    }
+
+                    //get rank
+                    int rank = myCont.userStatRolesRef.GetUsersRank(myCont.GetUserIDFromName(fullUserName));
+                    message.Channel.SendMessageAsync($@"{fullUserName} is ranked {rank + 1}th");
+
+                }
+
             }
             //get the total voice chat time of user
             //!totalchattime <username#0000> AKA <tag> //OBSELETE: OR !totalchattime userID
@@ -241,7 +301,50 @@ namespace DiscordUserStatsBot
                     message.Channel.SendMessageAsync($@"{tempUserStat.UsersFullName} has sent {tempUserStat.TotalMessagesSent} meaningful messages!");
                 }
             }
+            else if (command.Equals(membersPerRankCommand.ToLower()))
+            {
+                wasBotCommand = true;
 
+                if (!(stringAfterCommand.Contains(',')))
+                {
+                    message.Channel.SendMessageAsync($@"Invalid input. Use a comma.");
+                    return Task.CompletedTask;
+                }
+
+                //Parse role rank and integer inputs
+                int comma = stringAfterCommand.IndexOf(',');
+                int lengthAfterComma = stringAfterCommand.Length - (comma + 1);
+
+                string roleName = stringAfterCommand.Substring(0, comma);
+                roleName.Trim();
+                string newMemberLimitString = stringAfterCommand.Substring(comma + 1, lengthAfterComma);
+                newMemberLimitString.Trim();
+
+                int newMemberLimit = -1;
+
+                if(!(Int32.TryParse(newMemberLimitString, out newMemberLimit)))
+                {
+                    Console.WriteLine($@"Failed to convert amount string into integer.");
+                    return Task.CompletedTask;
+                }
+
+                //if rolename is same as in rankRoles list...
+                for (int index = 0; index < myCont.userStatRolesRef.rankRoles.Length; index++)
+                {
+                    if (myCont.userStatRolesRef.rankRoles[index].name.ToLower().Equals(roleName.ToLower()))
+                    {
+                        //...set new amount 
+                        myCont.userStatRolesRef.rankRoles[index].memberLimit = newMemberLimit;
+                        Console.WriteLine($@"{myCont.userStatRolesRef.rankRoles[index].name} memberLimit changed to {newMemberLimit}.");
+                    }
+                }
+
+                //update roles
+                myCont.userStatRolesRef.AssignRoles(guildRef);
+                //save roles
+                myCont.userStatRolesRef.SaveRoles(guildRef, myCont.saveHandlerRef);
+
+            }
             //------------------------------------------
             //--------------------------------------------------------------------------------------------------
             #endregion

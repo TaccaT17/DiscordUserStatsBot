@@ -98,7 +98,7 @@ namespace DiscordUserStatsBot
             if (!rankConfig.initialized)
             {
                 //by default ranks users by average messages and vcTime in the past month
-                rankConfig.rankType = RankConfig.RankType.mgsAndVCT;
+                rankConfig.rankType = RankConfig.RankType.msgAndVCT;
                 rankConfig.rankBy = RankConfig.RankByType.average;
                 rankConfig.rankTime = RankConfig.RankTimeType.month;
                 rankConfig.initialized = true;
@@ -385,11 +385,29 @@ namespace DiscordUserStatsBot
         }
 
         //---------------------------------------------------------------------
+
+        //TODO: way to make these one function?
+        public static void ChangeRankType(RankConfig.RankType newRankType)
+        {
+            rankConfig.rankType = newRankType;
+            //save rank config
+        }
+        public static void ChangeRankByType(RankConfig.RankByType newRankByType)
+        {
+            rankConfig.rankBy = newRankByType;
+            //save rank config
+        }
+        public static void ChangeRankTimeType(RankConfig.RankTimeType newRankTimeType)
+        {
+            rankConfig.rankTime = newRankTimeType;
+            //save rank config
+        }
+
         #endregion
-        
+
         //INTERFACE IMPLEMENTATION
         //---------------------------------------------------------------------
-        
+
         //default compares both messages and chat by month
         public int CompareTo(UserStatTracker other)
         {
@@ -461,7 +479,7 @@ namespace DiscordUserStatsBot
                 }
             }
             //rank by average both
-            if (rankConfig.rankType.Equals(RankConfig.RankType.mgsAndVCT))
+            if (rankConfig.rankType.Equals(RankConfig.RankType.msgAndVCT))
             {
                 //smaller number = higher rank
                 if ((this.messageRankPosition + this.vcTimeRankPosition) < (other.messageRankPosition + other.vcTimeRankPosition))
@@ -509,7 +527,7 @@ namespace DiscordUserStatsBot
             {
                 messages,
                 voiceChatTime,
-                mgsAndVCT
+                msgAndVCT
             }
             public enum RankByType
             {
