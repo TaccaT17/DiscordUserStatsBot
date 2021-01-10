@@ -16,15 +16,18 @@ namespace DiscordUserStatsBot
 
         //Commands
         private string greetCommand = "Hi",
-            helpCommand = "help",
+            aboutCommand = "About",
+            helpCommand = "Help",
             prefixCommand = "Prefix",
             totalChatTimeCommand = "TotalChatTime",
-            totalMessagesSentCommand = "TotalMessagesSent",
+            totalMessagesCommand = "TotalMessages",
             setRankTimeIntervalCommand = "SetRankTimeInterval",
-            membersPerRankCommand = "MembersPerRank",
+            setRankMemberLimitCommand = "SetRankMemberLimit",
+            rankMemberLimitCommand = "RankMemberLimit",
             changeRankCriteria = "RankBy",
             getUserRankCommand = "UserRank",
-            updateRanksCommand = "UpdateRanks";
+            updateRanksCommand = "UpdateRanks", 
+            botInfoCommand = "BotInfo";
 
         //bool to stop commands for this bot from being recorded in UserStat
         public bool wasBotCommand;
@@ -96,22 +99,67 @@ namespace DiscordUserStatsBot
                 return Task.CompletedTask;
             }
 
-            if (command.Equals(helpCommand.ToLower()))
+            if (command.Equals(aboutCommand.ToLower()))
+            {
+                wasBotCommand = true;
+                message.Channel.SendMessageAsync($@"The goal of the StatTracker bot is to create a more organized sidebar so active users appear near the top." +
+                                                 $@"The bot does this by doing two things: " + 
+                                                 $@"1. It records active users' guild (AKA server) activity over the past month (their time in chat + messages sent) " + 
+                                                 $@"2. It assigns users a rank and corresponding role based off of their activity." +
+                                                 $@"You have the option to turn off the sidebar organization if you just want a bit of fun comparing stats with you're friends");
+                return Task.CompletedTask;
+            }
+
+            else if (command.Equals(helpCommand.ToLower()))
             {
                 message.Channel.SendMessageAsync("Commands are: \n" +
                     greetCommand + " - the bot greets you\n" +
                     prefixCommand + " (<newPrefix>) - get the botPrefix or (optionally) set it\n" +
                     totalChatTimeCommand + " <username#0000> - get a given users total recorded guild time chat\n" +
-                    totalMessagesSentCommand + " <username#0000> - get a given users total recorded guild messages sent\n" +
-                    setRankTimeIntervalCommand + " <hours> - change interval between when users are ranked and assigned the appropriate role. This command resets the timer. \n" +
+                    totalMessagesCommand + " <username#0000> - get a given users total recorded guild messages sent\n" +
+                    updateRanksCommand + " - recalculates everyones rank\n" +
+                    setRankTimeIntervalCommand + " <hours> - change time interval between when users ranks are calculated. This command resets the timer. \n" +
                     changeRankCriteria + " <Msg, Vc, or Msg&Vc> - set whether people are ranked by messages, voice chat or both. \n" +
                     getUserRankCommand + " <username#0000> - get a given users rank\n" +
-                    updateRanksCommand + " - recalculates everyones rank\n" +
-                    membersPerRankCommand + " <RankRole>, <Amount> - changes the number of users in a RankRole to the given Amount\n" +
-
+                    setRankMemberLimitCommand + " <RankRole>, <Amount> - changes the number of users in a RankRole to the given Amount\n" +
+                    botInfoCommand + " gives relevant bot information" +
                     //TODO:
                     //set number of users per given role
                     "");
+
+                return Task.CompletedTask;
+            }
+
+            else if (command.Equals(botInfoCommand.ToLower()))
+            {
+                string roleNames = "";
+                for (int index = 0; index < myCont.userStatRolesRef.rankRoles.Length; index++)
+                {
+                    roleNames += $"\n       {myCont.userStatRolesRef.rankRoles[index].name} : \n                Member limit = {myCont.userStatRolesRef.rankRoles[index].memberLimit}";
+                }
+
+                string rankBy = "";
+                if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.messages))
+                {
+                    rankBy = "Messages";
+                }
+                else if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.voiceChatTime))
+                {
+                    rankBy = "Voice Chat Time";
+                }
+                else if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.msgAndVCT))
+                {
+                    rankBy = "Messages and Voice Chat time";
+                }
+
+                //returns bot info
+                message.Channel.SendMessageAsync($"Bot info: \n" +
+                    $"Assign ranks time interval: {myCont.GetAssignRolesInterval().ToString(@"dd\.hh\:mm\:ss")} \n" +
+                    $"What time ranks will be recalculated: {(myCont.GetAssignRolesTimerStart() + myCont.GetAssignRolesInterval()).ToString()} \n" +
+                    $"Users ranked by: {rankBy}\n" + 
+                    $"Rank roles: {roleNames}");
+
+                return Task.CompletedTask;
             }
 
             //------------------------------------------
@@ -155,8 +203,6 @@ namespace DiscordUserStatsBot
                     myCont.ChangeAssignRolesInterval(tP);
                 }
 
-                
-
                 return Task.CompletedTask;
             }
             else if (command.Equals(changeRankCriteria.ToLower()))
@@ -191,65 +237,76 @@ namespace DiscordUserStatsBot
                 myCont.userStatRolesRef.AssignRoles(guildRef);
 
             }
+            else if (command.Equals(rankMemberLimitCommand.ToLower()))
+            {
+                wasBotCommand = true;
+
+                for (int index = 0; index < myCont.userStatRolesRef.rankRoles.Length; index++)
+                {
+                    if (myCont.userStatRolesRef.rankRoles[index].name.ToLower().Equals(stringAfterCommand.ToLower()))
+                    {
+                        message.Channel.SendMessageAsync($@"{myCont.userStatRolesRef.rankRoles[index].name} memberLimit is {myCont.userStatRolesRef.rankRoles[index].memberLimit}.");
+                    }
+                }
+
+            }
             else if (command.Equals(getUserRankCommand.ToLower()))
             {
                 wasBotCommand = true;
 
-                string fullUserName = ReformatStringToUsername(stringAfterCommand).Result;
+                string userName = ReformatStringToUsername(stringAfterCommand).Result;
 
-                if (fullUserName == null)
+                if (userName == null)
                 {
-                    message.Channel.SendMessageAsync($@"Sorry that isn't a valid username#0000. Did you remember the discriminator?");
+                    message.Channel.SendMessageAsync($@"Sorry that isn't a valid username");
                     return Task.CompletedTask;
                 }
                 else
                 {
-                    UserStatTracker tempUserStat = myCont.GetUserStats(fullUserName);
+                    UserStatTracker tempUserStat = myCont.GetUserStats(userName);
 
                     if (tempUserStat == null)
                     {
-                        message.Channel.SendMessageAsync($@"Sorry there is no data on {fullUserName}.");
+                        message.Channel.SendMessageAsync($@"Sorry there is no data on {userName}.");
                         //This could possibly be a logic error: one of the two dictionaries is lacking an entry for this user
 
                         return Task.CompletedTask;
                     }
 
                     //get rank
-                    int rank = myCont.userStatRolesRef.GetUsersRank(myCont.GetUserIDFromName(fullUserName));
-                    message.Channel.SendMessageAsync($@"{fullUserName} is ranked {rank + 1}th");
+                    int rank = myCont.userStatRolesRef.GetUsersRank(myCont.GetUserIDFromName(userName));
+                    message.Channel.SendMessageAsync($@"{userName} is ranked {rank + 1}th");
 
                 }
 
             }
-            //get the total voice chat time of user
-            //!totalchattime <username#0000> AKA <tag> //OBSELETE: OR !totalchattime userID
             else if (command.Equals(totalChatTimeCommand.ToLower()))
             {
                 wasBotCommand = true;
 
-                string fullUserName = ReformatStringToUsername(stringAfterCommand).Result;
+                string userName = ReformatStringToUsername(stringAfterCommand).Result;
 
                 //if not valid string
-                if (fullUserName == null)
+                if (userName == null)
                 {
-                    message.Channel.SendMessageAsync($@"Sorry that isn't a valid username#0000. Did you remember the discriminator?");
+                    message.Channel.SendMessageAsync($@"Sorry that isn't a valid username.");
                     return Task.CompletedTask;
                 }
                 else
                 {
-                    UserStatTracker tempUserStat = myCont.GetUserStats(fullUserName);
+                    UserStatTracker tempUserStat = myCont.GetUserStats(userName);
 
                     if (tempUserStat == null)
                     {
-                        message.Channel.SendMessageAsync($@"Sorry there is no data on {fullUserName}.");
+                        message.Channel.SendMessageAsync($@"Sorry there is no data on {userName}.");
                         //This could possibly be a logic error: one of the two dictionaries is lacking an entry for this user
 
                         return Task.CompletedTask;
                     }
 
-                    if (myCont.GetUserIDFromName(fullUserName) != 0 && (guildRef.GetUser(myCont.GetUserIDFromName(fullUserName)) != null))
+                    if (myCont.GetUserIDFromName(userName) != 0 && (guildRef.GetUser(myCont.GetUserIDFromName(userName)) != null))
                     {
-                        SocketGuildUser guildUser = guildRef.GetUser(myCont.GetUserIDFromName(fullUserName));
+                        SocketGuildUser guildUser = guildRef.GetUser(myCont.GetUserIDFromName(userName));
 
                         //if user in a chat update their time before sending message, otherwise just send message
                         if (myCont.UserIsInChat(guildUser))
@@ -273,26 +330,25 @@ namespace DiscordUserStatsBot
                     }
                 }
             }
-            //get the total messages sent by user
-            else if (command.Equals(totalMessagesSentCommand.ToLower()))
+            else if (command.Equals(totalMessagesCommand.ToLower()))
             {
                 wasBotCommand = true;
 
-                string fullUserName = ReformatStringToUsername(stringAfterCommand).Result;
+                string userName = ReformatStringToUsername(stringAfterCommand).Result;
 
                 //if not valid string
-                if (fullUserName == null)
+                if (userName == null)
                 {
-                    message.Channel.SendMessageAsync($@"Sorry that isn't a valid username#0000. Did you remember the discriminator?");
+                    message.Channel.SendMessageAsync($@"Sorry that isn't a valid username.");
                     return Task.CompletedTask;
                 }
                 else
                 {
-                    UserStatTracker tempUserStat = myCont.GetUserStats(fullUserName);
+                    UserStatTracker tempUserStat = myCont.GetUserStats(userName);
 
                     if (tempUserStat == null)
                     {
-                        message.Channel.SendMessageAsync($@"Sorry there is no data on {fullUserName}.");
+                        message.Channel.SendMessageAsync($@"Sorry there is no data on {userName}.");
                         //This could possibly be a logic error: one of the two dictionaries is lacking an entry for this user
 
                         return Task.CompletedTask;
@@ -301,7 +357,7 @@ namespace DiscordUserStatsBot
                     message.Channel.SendMessageAsync($@"{tempUserStat.UsersFullName} has sent {tempUserStat.TotalMessagesSent} meaningful messages!");
                 }
             }
-            else if (command.Equals(membersPerRankCommand.ToLower()))
+            else if (command.Equals(setRankMemberLimitCommand.ToLower()))
             {
                 wasBotCommand = true;
 
@@ -411,7 +467,8 @@ namespace DiscordUserStatsBot
             }
             else
             {
-                Console.WriteLine("Invalid string. Cannot convert to a username");
+                fullUserName = unformattedUsernameString.Trim();
+                //Console.WriteLine("Invalid string. Cannot convert to a username");
             }
             return Task<string>.FromResult(fullUserName);
         }

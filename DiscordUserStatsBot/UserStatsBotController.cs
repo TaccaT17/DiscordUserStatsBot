@@ -15,26 +15,24 @@ using System.Threading.Tasks;
 using System.Timers;
 
 
-//CURRENT TASK:
+//CURRENT TASK: 
 
 //Debugging Issues: 
 
 ///Completed
-///fixed message recording bug due to out of order event subscription
-///Added Command to set how ranking users (msg, vc, both)
-///added get users rank command
-///added command to change rankRole memberlimit
-///made it so allows for failed capitalization when querying username
+///added command to query what a ranks memberlimit is
+///Make it so you can just type username without #0000
+///added botInfo command
 
 
 
 ///FUTURE TASKS:
+///account for users with same username
 ///add command to rank by averages vs. totals, day, week, month
 ///save/load userRank list
 ///Make it get the guild it's a part of on start up AKA make it so it deals with multiple guilds at once
 ///get specific day of week/month stats
 ///change it so averages/totals can take in a range of days
-///Make it get the guild it's a part of on start up AKA make it so it deals with multiple guilds at once
 ///change so takes username and then if there is more than one user with that name prompts you for a discriminator. Also deals with nicknames.
 ///Allow people to also search for userstats with an ID
 ///When user changes their name this bots connection to the guild doesn't realise this AKA I still get the old name if I ask it to print the SocketGuildUser name. Is fixed when I restart the Bot. Same thing occurs with nickname. If I think a user has changed their name reset connetion?
@@ -48,9 +46,11 @@ using System.Timers;
 ///can rank users by month, week, or day
 ///convert iDToUserStat into just a userStat list
 ///REWRITE EVERYTHING NOW THAT YOU CAN GET OFFLINE USERS
-///Get best users based off of messages + voice chat
 ///add admin limitations to commands
 ///save rank config
+///account for internet dropping out
+///command that stops users from being organized in the sidebar by the rankRoles
+///save assign roles timer
 /////add commands (see "help" command)
 
 namespace DiscordUserStatsBot
@@ -101,6 +101,7 @@ namespace DiscordUserStatsBot
         //assign roles timer
         private System.Timers.Timer assignRolesTimer;
         private TimeSpan assignRolesTimeSpan;
+        private DateTime assignRolesStartTime;
 
         //--------------------------------------------------------------------------------------------------------------------------------------------------------------- 
         #endregion
@@ -398,7 +399,9 @@ namespace DiscordUserStatsBot
             return Task.CompletedTask;
         }
 
-        //returns null if no user in the dictionary
+        /// <summary>
+        /// returns null if no user in the dictionary
+        /// </summary>
         public UserStatTracker GetUserStats(string userName)
         {
             UserStatTracker userStatInst = null;
@@ -411,13 +414,16 @@ namespace DiscordUserStatsBot
             }
             else
             {
+
                 //see if they just weren't capitalizing correctly
                 foreach(KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
                 {
-                    if (item.Key.ToLower().Equals(userName.ToLower()))
+                    Console.WriteLine($@"   Name attempt: {item.Key.ToLower().Substring(0, item.Key.Length - 5)}");
+
+                    if (item.Key.ToLower().Equals(userName.ToLower()) || (item.Key.ToLower().Substring(0, item.Key.Length - 5)).Equals(userName.ToLower()))
                     {
                         userName = item.Key;
-                        Console.WriteLine("Name was simply not in correct casing");
+                        Console.WriteLine("Name was simply not in correct casing or did not include discriminator");
                     }
                 }
 
@@ -451,13 +457,13 @@ namespace DiscordUserStatsBot
             }
             else
             {
-                //see if they just weren't capitalizing correctly
+                //see if they just weren't capitalizing correctly or lacking discriminator
                 foreach (KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
                 {
-                    if (item.Key.ToLower().Equals(userName.ToLower()))
+                    if (item.Key.ToLower().Equals(userName.ToLower()) || item.Key.ToLower().Substring(0, item.Key.Length - 5).Equals(userName.ToLower()))
                     {
                         userName = item.Key;
-                        Console.WriteLine("Name was simply not in correct casing");
+                        Console.WriteLine("Name was simply not in correct casing or did not include discriminator");
                     }
                 }
 
@@ -522,6 +528,7 @@ namespace DiscordUserStatsBot
         {
             assignRolesTimer = new System.Timers.Timer(timeTillNextAssignRoles.TotalMilliseconds);
             Console.WriteLine($@"Timer interval is {assignRolesTimer.Interval} milliseconds");
+            assignRolesStartTime = DateTime.Now;
 
             assignRolesTimer.Elapsed += AssignRolesTimerCallback;
             assignRolesTimer.AutoReset = true;
@@ -535,9 +542,20 @@ namespace DiscordUserStatsBot
 
         public void ChangeAssignRolesInterval(TimeSpan interval)
         {
+            assignRolesTimeSpan = interval;
             assignRolesTimer.Interval = interval.TotalMilliseconds;
             userStatRolesRef.AssignRoles(guildRef);
+            assignRolesStartTime = DateTime.Now;
             Console.WriteLine("Assign timer interval changed");
+        }
+
+        public TimeSpan GetAssignRolesInterval()
+        {
+            return assignRolesTimeSpan;
+        }
+        public DateTime GetAssignRolesTimerStart()
+        {
+            return assignRolesStartTime;
         }
 
         private Task SaveRoles(SocketRole roleBefore, SocketRole roleAfter)

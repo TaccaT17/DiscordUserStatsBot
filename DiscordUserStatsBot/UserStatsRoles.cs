@@ -52,7 +52,7 @@ namespace DiscordUserStatsBot
         public void CreateDefaultRolesArray()
         {
             defaultRoleColors = new Discord.Color[] { Discord.Color.Orange, Discord.Color.Purple, Discord.Color.Blue, Discord.Color.Green, Discord.Color.LighterGrey };
-            defaultRoleNames = new string[] { "Apexian Exarch", "High Baroness", "Earl", "Low Inquisitor", "Simple Sentinel" };
+            defaultRoleNames = new string[] { "Apexian Loudmouth", "Babbling Baroness", "Insightful Inquisitor", "Earl of Eavesdropping", "Silent Sentinel" };
             //TODO: Change back to                3, 5, 10, 30, 100
             defaultRoleMemberAmount = new int[] { 1, 1, 1, 2, 3 };
             //make default array of UserStatRole struct
