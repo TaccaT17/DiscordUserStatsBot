@@ -17,22 +17,21 @@ using System.Timers;
 
 //CURRENT TASK: 
 
-//Debugging Issues: 
+//Debugging Issues: rankConfig not saving correctly
 
 ///Completed
-///added command to query what a ranks memberlimit is
-///Make it so you can just type username without #0000
-///added botInfo command
+///added rank by averages vs. totals, day, week, month to RankBy command
+///redid saves/load so should now cover everything (including assignRolesTimeSpan, rankConfig and rankedUsers list)
+///made "help" command more readable
+///deleted debugging functions in UserStatTracker class
+///included rankTime and rankBy in botinfo
 
 
 
 ///FUTURE TASKS:
 ///account for users with same username
-///add command to rank by averages vs. totals, day, week, month
-///save/load userRank list
 ///Make it get the guild it's a part of on start up AKA make it so it deals with multiple guilds at once
 ///get specific day of week/month stats
-///change it so averages/totals can take in a range of days
 ///change so takes username and then if there is more than one user with that name prompts you for a discriminator. Also deals with nicknames.
 ///Allow people to also search for userstats with an ID
 ///When user changes their name this bots connection to the guild doesn't realise this AKA I still get the old name if I ask it to print the SocketGuildUser name. Is fixed when I restart the Bot. Same thing occurs with nickname. If I think a user has changed their name reset connetion?
@@ -40,18 +39,15 @@ using System.Timers;
 ///Make it so that re-made roles are placed in correct spot
 ///make it so that they can specify how many roles they want (3, 4, or 5)
 ///look up total/average time for users in given role
+///look up average time for specific user
 ///allow admin to change number of max users per role. allow people to get how many max users per role
-///call assign roles function every 24 hours
-///make so can rank users by messages or by hours in chat or both(default)
-///can rank users by month, week, or day
 ///convert iDToUserStat into just a userStat list
 ///REWRITE EVERYTHING NOW THAT YOU CAN GET OFFLINE USERS
 ///add admin limitations to commands
-///save rank config
 ///account for internet dropping out
 ///command that stops users from being organized in the sidebar by the rankRoles
-///save assign roles timer
-/////add commands (see "help" command)
+///TODO: Compress GetUserStats and GetUserIDFromName
+///put all JSON save files into same folder
 
 namespace DiscordUserStatsBot
 {
@@ -103,6 +99,9 @@ namespace DiscordUserStatsBot
         private TimeSpan assignRolesTimeSpan;
         private DateTime assignRolesStartTime;
 
+        [Newtonsoft.Json.JsonProperty]
+        private UserStatTracker.RankConfig rankConfigSave;
+
         //--------------------------------------------------------------------------------------------------------------------------------------------------------------- 
         #endregion
 
@@ -122,7 +121,7 @@ namespace DiscordUserStatsBot
             client.UserVoiceStateUpdated += VoiceChatChange;
 
             //Times when the bot will create an entry for a user
-            client.UserJoined += AddNewUserToStatBotIndex;
+            //client.UserJoined += AddNewUserToStatBotIndex;
             client.MessageReceived += AddNewUserToStatBotIndex;
             UserJoinedAVoiceChat += AddNewUserToStatBotIndex;
 
@@ -132,7 +131,7 @@ namespace DiscordUserStatsBot
             UserJoinedAVoiceChat += StartRecordingVCTime;
             UserLeftAllVoiceChats += StopRecordingVCTime;
 
-            client.RoleUpdated += SaveRoles;
+            client.RoleUpdated += SaveRolesSub;
 
             //discord people/bots/objects have a "token" AKA ID that is a password/username
             // not secure to hardcode token so instead will get it from saved file (under TomsDiscordBot->bin->Debug->netcoreapp3.1)
@@ -178,7 +177,7 @@ namespace DiscordUserStatsBot
                 debugVoiceChannelRef = guildRef.GetVoiceChannel(TBE_DEBUG_VOICE_CHANNEL_ID);
             }
 
-            //make save class
+            //make save, roles, command classes
             if(saveHandlerRef == null)
             saveHandlerRef = new SaveHandler();
             if(userStatRolesRef == null)
@@ -191,44 +190,22 @@ namespace DiscordUserStatsBot
                 client.MessageReceived += RecordMessageSent;
                 commandHandlerRef.wasBotCommand = false;
             }
-                
 
 
+            LoadAllBotInfo();
 
-            //LOADING
-            //set up user dictionaries and load any info that already exists
-            saveHandlerRef.LoadDictionary(out guildUserIDToStatIndex, nameof(guildUserIDToStatIndex)); //out keyword passes by reference instead of value
-            saveHandlerRef.LoadDictionary(out guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
-
-            if (guildUserNameToIDIndex == null)
-            {
-                guildUserNameToIDIndex = new Dictionary<string, ulong>();
-                //Console.WriteLine("New dictionary to save usernames and IDs made.");
-            }
-            if (guildUserIDToStatIndex == null)
-            {
-                guildUserIDToStatIndex = new Dictionary<ulong, UserStatTracker>();
-                //Console.WriteLine("New dictionary to save IDs and UserStats made.");
-            }
-
-            //load/create roles
-            saveHandlerRef.LoadArray(out userStatRolesRef.rankRoles, userStatRolesRef.rolesSaveFileName);
-            if(userStatRolesRef.rankRoles == null)
-            {
-                userStatRolesRef.CreateDefaultRolesArray();
-            }
+            //create roles
             userStatRolesRef.CreateRoles(guildRef);
-            //save roles
-            userStatRolesRef.SaveRoles(guildRef, saveHandlerRef);
+
+            //start timer
+            AssignRolesTimer(assignRolesTimeSpan);
 
             //calculate/assign user roles
             userStatRolesRef.AssignRoles(guildRef);
 
-            //default
-            assignRolesTimeSpan = new TimeSpan(0, 0, 5);
-            AssignRolesTimer(assignRolesTimeSpan);
+            SaveAllBotInfo();
 
-            SocketGuildUser user;
+            /*SocketGuildUser user;
             IEnumerator<SocketGuildUser> userE = guildRef.Users.GetEnumerator();
 
             Console.WriteLine("GUILD USERS:");
@@ -237,9 +214,9 @@ namespace DiscordUserStatsBot
                 user = userE.Current;
 
                 Console.WriteLine($@"   User in guild: {user.Username}");
-            }
+            }*/
 
-                Console.WriteLine("Bot set up");
+            Console.WriteLine("Bot set up");
 
             return Task.CompletedTask;
         }
@@ -414,20 +391,26 @@ namespace DiscordUserStatsBot
             }
             else
             {
+                int usersWithName = 0;
 
-                //see if they just weren't capitalizing correctly
+                //see if they just weren't capitalizing correctly or were excluding discriminator
                 foreach(KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
                 {
-                    Console.WriteLine($@"   Name attempt: {item.Key.ToLower().Substring(0, item.Key.Length - 5)}");
+                    //Console.WriteLine($@"   Name attempt: {item.Key.ToLower().Substring(0, item.Key.Length - 5)}");
 
                     if (item.Key.ToLower().Equals(userName.ToLower()) || (item.Key.ToLower().Substring(0, item.Key.Length - 5)).Equals(userName.ToLower()))
                     {
                         userName = item.Key;
-                        Console.WriteLine("Name was simply not in correct casing or did not include discriminator");
+                        usersWithName++;
+                        //Console.WriteLine("Name was simply not in correct casing or did not include discriminator");
                     }
                 }
 
-                if (guildUserNameToIDIndex.ContainsKey(userName))
+                if(usersWithName > 1)
+                {
+                    //Too many users with same name
+                }
+                else if (guildUserNameToIDIndex.ContainsKey(userName))
                 {
                     userStatInst = guildUserIDToStatIndex[guildUserNameToIDIndex[userName]];
                 }
@@ -457,17 +440,24 @@ namespace DiscordUserStatsBot
             }
             else
             {
+                int usersWithName = 0;
+
                 //see if they just weren't capitalizing correctly or lacking discriminator
                 foreach (KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
                 {
                     if (item.Key.ToLower().Equals(userName.ToLower()) || item.Key.ToLower().Substring(0, item.Key.Length - 5).Equals(userName.ToLower()))
                     {
                         userName = item.Key;
-                        Console.WriteLine("Name was simply not in correct casing or did not include discriminator");
+                        usersWithName++;
+                        //Console.WriteLine("Name was simply not in correct casing or did not include discriminator");
                     }
                 }
 
-                if (guildUserNameToIDIndex.ContainsKey(userName))
+                if (usersWithName > 1)
+                {
+                    //Too many users with same name
+                }
+                else if (guildUserNameToIDIndex.ContainsKey(userName))
                 {
                     userID = guildUserNameToIDIndex[userName];
                 }
@@ -482,12 +472,7 @@ namespace DiscordUserStatsBot
 
         #endregion
 
-        #region MiscFunctions
-        private string GetUserNamePlusDiscrim(SocketGuildUser guildUser)
-        {
-            return guildUser.Username + '#' + guildUser.Discriminator;
-        }
-
+        #region TimerFunctions
         public bool UserIsInChat(SocketUser userInQuestion)
         {
             //loop through active channels and users in them 
@@ -546,6 +531,8 @@ namespace DiscordUserStatsBot
             assignRolesTimer.Interval = interval.TotalMilliseconds;
             userStatRolesRef.AssignRoles(guildRef);
             assignRolesStartTime = DateTime.Now;
+            //save assignRolesTimer
+            saveHandlerRef.SaveObject(assignRolesTimeSpan, nameof(assignRolesTimeSpan));
             Console.WriteLine("Assign timer interval changed");
         }
 
@@ -557,15 +544,93 @@ namespace DiscordUserStatsBot
         {
             return assignRolesStartTime;
         }
+        #endregion
 
-        private Task SaveRoles(SocketRole roleBefore, SocketRole roleAfter)
+        #region MiscFunctions
+        private string GetUserNamePlusDiscrim(SocketGuildUser guildUser)
+        {
+            return guildUser.Username + '#' + guildUser.Discriminator;
+        }
+
+        private Task SaveRolesSub(SocketRole roleBefore, SocketRole roleAfter)
         {
             //save roles
-            userStatRolesRef.SaveRoles(guildRef, saveHandlerRef);
+            userStatRolesRef.SaveRankRoles(guildRef, saveHandlerRef);
 
-            Console.WriteLine("Roles Saved");
+            //Console.WriteLine("Roles Saved");
 
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Loads bot config and data
+        /// </summary>
+        private void LoadAllBotInfo()
+        {
+            //LOADING
+            
+            //load roles
+            saveHandlerRef.LoadArray(out userStatRolesRef.rankRoles, userStatRolesRef.rolesSaveFileName);
+            if (userStatRolesRef.rankRoles == null)
+            {
+                userStatRolesRef.CreateDefaultRolesArray();
+            }
+
+            //load roles timer
+            saveHandlerRef.LoadObject(out assignRolesTimeSpan, nameof(assignRolesTimeSpan));
+            if (assignRolesTimeSpan.Equals(default(TimeSpan)))
+            {
+                assignRolesTimeSpan = new TimeSpan(24, 0, 0);
+            }
+
+            //TODO: TEST THIS
+            //load rank Config
+            //saveHandlerRef.LoadObject(out UserStatTracker.rankConfig, nameof(rankConfigSave));
+            saveHandlerRef.LoadObject(out UserStatTracker.rankConfig, nameof(UserStatTracker.rankConfig));
+            if (!(UserStatTracker.rankConfig.initialized))
+            {
+                UserStatTracker.DefaultRankConfig();
+            }
+
+            userStatRolesRef.LoadRankedUsers();
+
+            //set up user dictionaries and load any info that already exists
+            saveHandlerRef.LoadDictionary(out guildUserIDToStatIndex, nameof(guildUserIDToStatIndex)); //out keyword passes by reference instead of value
+            saveHandlerRef.LoadDictionary(out guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
+
+            if (guildUserNameToIDIndex == null)
+            {
+                guildUserNameToIDIndex = new Dictionary<string, ulong>();
+                //Console.WriteLine("New dictionary to save usernames and IDs made.");
+            }
+            if (guildUserIDToStatIndex == null)
+            {
+                guildUserIDToStatIndex = new Dictionary<ulong, UserStatTracker>();
+                //Console.WriteLine("New dictionary to save IDs and UserStats made.");
+            }
+
+        }
+
+        /// <summary>
+        /// Saves bot config and data
+        /// </summary>
+        private void SaveAllBotInfo()
+        {
+            //save roles
+            userStatRolesRef.SaveRankRoles(guildRef, saveHandlerRef);
+
+            //save timer time 
+            saveHandlerRef.SaveObject(assignRolesTimeSpan, nameof(assignRolesTimeSpan));
+
+            //rank config save
+            //rankConfigSave = UserStatTracker.rankConfig;
+            //saveHandlerRef.SaveObject(rankConfigSave, nameof(rankConfigSave));
+            saveHandlerRef.SaveObject(UserStatTracker.rankConfig, nameof(UserStatTracker.rankConfig));
+
+            userStatRolesRef.SaveRankedUsers();
+
+            saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
+            saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
         }
 
         #endregion

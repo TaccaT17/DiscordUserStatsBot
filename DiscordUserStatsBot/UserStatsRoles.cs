@@ -8,10 +8,7 @@ using System.Threading.Tasks;
 namespace DiscordUserStatsBot
 {
 
-    //USE REST WHEN SENDING REQUEST, USE WEBSOCKET WHEN 
-
-    //creates different roles 
-    //bool for enabling or disabling roles
+    //Note: USE REST WHEN SENDING REQUEST, USE WEBSOCKET WHEN 
 
 
     class UserStatsRoles
@@ -32,7 +29,8 @@ namespace DiscordUserStatsBot
         private int defaultNumberOfRoles = 5;
 
         public string rolesSaveFileName = "rolesSave";
-
+        
+        [Newtonsoft.Json.JsonProperty]
         private List<ulong> rankedUsers; //messageRank, chatRank, totalRank;
 
         UserStatsBotController myCont;
@@ -65,8 +63,6 @@ namespace DiscordUserStatsBot
             Console.WriteLine("Default Roles Created");
         }
 
-
-
         /// <summary>
         /// Assigns users their appropriate role. Called when bot started and once every day
         /// </summary>
@@ -91,31 +87,27 @@ namespace DiscordUserStatsBot
             RankUsers();
 
             //go through rankedList and give each user appropriate role
-
             int rankedUserIndex = 0;
-
             for (int rankRole = 0; rankRole < rankRoles.Length; rankRole++)
             {
                 for (int index = 0; index < rankRoles[rankRole].memberLimit; index++)
                 {
                     if(rankedUsers.Count < 1)
                     {
-                        Console.WriteLine("No current users to assign roles to");
+                        //Console.WriteLine("No current users to assign roles to");
                         return;
                     }
 
                     if(rankedUserIndex >= rankedUsers.Count)
                     {
-                        Console.WriteLine("Ran out of users to assign roles to");
+                        //Console.WriteLine("Ran out of users to assign roles to");
                         return;
                     }
-
+                    
+                    //iterate though given users roles
                     SocketRole usersExistingRoles;
-
                     IEnumerator<SocketRole> userExistingRoleE = guildRef.GetUser(rankedUsers[rankedUserIndex]).Roles.GetEnumerator();
-
                     bool hasRole = false;
-
                     while (userExistingRoleE.MoveNext())
                     {
                         usersExistingRoles = userExistingRoleE.Current;
@@ -124,7 +116,7 @@ namespace DiscordUserStatsBot
                         if (usersExistingRoles.Id.Equals(rankRoles[rankRole].Id))
                         {
                             hasRole = true;
-                            Console.WriteLine($@"User already has appropriate role");
+                            //Console.WriteLine($@"User already has appropriate role");
 
                         }
                         //if the user has another ranked role remove that one
@@ -136,7 +128,7 @@ namespace DiscordUserStatsBot
                                 if (usersExistingRoles.Id.Equals(rankRoles[role].Id))
                                 {
                                     await guildRef.GetUser(rankedUsers[rankedUserIndex]).RemoveRoleAsync(guildRef.GetRole(rankRoles[role].Id));
-                                    Console.WriteLine($@"Removed unnecesary rank role");
+                                    //Console.WriteLine($@"Removed unnecesary rank role");
                                 }
                             }
                         }
@@ -146,14 +138,15 @@ namespace DiscordUserStatsBot
                     {
                         //if user doesnt have role assign it
                         await guildRef.GetUser(rankedUsers[rankedUserIndex]).AddRoleAsync(guildRef.GetRole(rankRoles[rankRole].Id));
-                        Console.WriteLine($@"Gave user appropriate rank role");
+                        //Console.WriteLine($@"Gave user appropriate rank role");
                     }
 
                     rankedUserIndex++;
                 }
             }
 
-            Console.WriteLine("Assign Roles End");
+            //save rankedUsers list
+            SaveRankedUsers();
 
         }
 
@@ -229,11 +222,6 @@ namespace DiscordUserStatsBot
             return;
         }        
 
-        public void ChangeRoleMaxUsers(int newMaxUsers, ulong roleID)
-        {
-
-        }
-
         public void CreateRoles(SocketGuild guildRef)
         {
             //if role not in array or discord doesn't have it make a whole new role
@@ -284,7 +272,7 @@ namespace DiscordUserStatsBot
         /// <param name="guildRef"></param>
         /// <param name="saveRef"></param>
         /// <returns></returns>
-        public Task SaveRoles(SocketGuild guildRef, SaveHandler saveRef)
+        public Task SaveRankRoles(SocketGuild guildRef, SaveHandler saveRef)
         {
             //make sure roles array is up to date and saved
 
@@ -324,6 +312,16 @@ namespace DiscordUserStatsBot
             return Task.CompletedTask;
         }
 
+        public void SaveRankedUsers()
+        {
+            myCont.saveHandlerRef.SaveObject(rankedUsers, nameof(rankedUsers));
+        }
+
+        public void LoadRankedUsers()
+        {
+            myCont.saveHandlerRef.LoadObject(out rankedUsers, nameof(rankedUsers));
+        }
+
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion
         public struct UserStatRole
@@ -342,6 +340,5 @@ namespace DiscordUserStatsBot
                 position = rolePosition;
             }
         }
-
     }
 }

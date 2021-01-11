@@ -97,11 +97,7 @@ namespace DiscordUserStatsBot
 
             if (!rankConfig.initialized)
             {
-                //by default ranks users by average messages and vcTime in the past month
-                rankConfig.rankType = RankConfig.RankType.msgAndVCT;
-                rankConfig.rankBy = RankConfig.RankByType.average;
-                rankConfig.rankTime = RankConfig.RankTimeType.month;
-                rankConfig.initialized = true;
+                DefaultRankConfig();
             }
             
 
@@ -111,6 +107,16 @@ namespace DiscordUserStatsBot
 
         #region FUNCTIONS
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+        public static void DefaultRankConfig()
+        {
+            //by default ranks users by average messages and vcTime in the past month
+            rankConfig.rankType = RankConfig.RankType.msgAndVCT;
+            rankConfig.rankBy = RankConfig.RankByType.average;
+            rankConfig.rankTime = RankConfig.RankTimeType.month;
+            rankConfig.initialized = true;
+            Console.WriteLine($@"rankConfig initialized");
+        }
 
         //TODO: Getting called too often?
         public void RecordGuildUserEnterVoiceChatTime()
@@ -326,84 +332,23 @@ namespace DiscordUserStatsBot
         }
         #endregion
 
-        #region DEBBUGGING
-        //---------------------------------------------------------------------
-        public void PrintStatDaysArray()
-        {
-            Console.WriteLine("");
-
-            foreach (UserStatDay day in userStatsDays)
-            {
-                Console.WriteLine($@"Date: {day.date.ToString()}");
-                Console.WriteLine($@"Messages: {day.messagesSent}");
-                Console.WriteLine($@"VCTime: {day.vCTime.ToString()}");
-            }
-
-            return;
-        }
-
-        public void PrintData()
-        {
-            Console.WriteLine("");
-            Console.WriteLine($@"Total chat time this past day: {GetTotalChatTime(1)}");
-            Console.WriteLine($@"Total chat time this past week: {GetTotalChatTime(7)}");
-            Console.WriteLine($@"Total chat time this past month: {GetTotalChatTime(30)}");
-            Console.WriteLine($@"Total chat time all time: {totalVCTime}");
-
-            Console.WriteLine($@"Average chat time this past day: {GetAverageChatTime(1)}");
-            Console.WriteLine($@"Average chat time this past week: {GetAverageChatTime(7)}");
-            Console.WriteLine($@"Average chat time this past month: {GetAverageChatTime(30)}");
-            Console.WriteLine($@"Average chat time all time: {GetTotalAverageChatTime()}");
-
-            Console.WriteLine($@"Total messages this past day: {GetTotalMessages(1)}");
-            Console.WriteLine($@"Total messages this past week: {GetTotalMessages(7)}");
-            Console.WriteLine($@"Total messages this past month: {GetTotalMessages(30)}");
-            Console.WriteLine($@"Total messages all time: {totalMessagesSent}");
-
-            Console.WriteLine($@"Average messages this past day: {GetAverageMessages(1)}");
-            Console.WriteLine($@"Average messages this past week: {GetAverageMessages(7)}");
-            Console.WriteLine($@"Average messages this past month: {GetAverageMessages(30)}");
-            Console.WriteLine($@"Average messages all time: {GetTotalAverageMessages()}");
-        }
-
-        public void AddFakeData()
-        {
-            userStatsDays[27].messagesSent = 14;
-            totalMessagesSent += userStatsDays[27].messagesSent;
-            userStatsDays[27].vCTime = new TimeSpan(9, 36, 8);
-            totalVCTime += userStatsDays[27].vCTime;
-
-            userStatsDays[15].messagesSent = 72;
-            totalMessagesSent += userStatsDays[15].messagesSent;
-            userStatsDays[15].vCTime = new TimeSpan(2, 49, 4);
-            totalVCTime += userStatsDays[15].vCTime;
-
-            userStatsDays[3].messagesSent = 25;
-            totalMessagesSent += userStatsDays[3].messagesSent;
-            userStatsDays[3].vCTime = new TimeSpan(5, 7, 2);
-            totalVCTime += userStatsDays[3].vCTime;
-        }
-
-        //---------------------------------------------------------------------
-
         //TODO: way to make these one function?
-        public static void ChangeRankType(RankConfig.RankType newRankType)
+        public static void ChangeRankCriteria(RankConfig.RankType newRankType)
         {
             rankConfig.rankType = newRankType;
-            //save rank config
+            //gets saved b/c AssignRoles() called
         }
-        public static void ChangeRankByType(RankConfig.RankByType newRankByType)
+        public static void ChangeRankCriteria(RankConfig.RankByType newRankByType)
         {
             rankConfig.rankBy = newRankByType;
-            //save rank config
+            //gets saved b/c AssignRoles() called
         }
-        public static void ChangeRankTimeType(RankConfig.RankTimeType newRankTimeType)
+        public static void ChangeRankCriteria(RankConfig.RankTimeType newRankTimeType)
         {
             rankConfig.rankTime = newRankTimeType;
-            //save rank config
+            //gets saved b/c AssignRoles() called
         }
 
-        #endregion
 
         //INTERFACE IMPLEMENTATION
         //---------------------------------------------------------------------
@@ -546,8 +491,5 @@ namespace DiscordUserStatsBot
             public RankByType rankBy;
             public RankTimeType rankTime;
         }
-
-        
-
     }
 }

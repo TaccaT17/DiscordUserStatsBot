@@ -11,6 +11,9 @@ namespace DiscordUserStatsBot
         private UserStatsBotController myCont;
         private SocketGuild guildRef;
 
+        /// <summary>
+        /// Prefix used to call bot commands.
+        /// </summary>
         private char botCommandPrefix = '!';
         private string ignoreAfterCommandString = "IACSn0ll";
 
@@ -23,7 +26,6 @@ namespace DiscordUserStatsBot
             totalMessagesCommand = "TotalMessages",
             setRankTimeIntervalCommand = "SetRankTimeInterval",
             setRankMemberLimitCommand = "SetRankMemberLimit",
-            rankMemberLimitCommand = "RankMemberLimit",
             changeRankCriteria = "RankBy",
             getUserRankCommand = "UserRank",
             updateRanksCommand = "UpdateRanks", 
@@ -112,19 +114,17 @@ namespace DiscordUserStatsBot
 
             else if (command.Equals(helpCommand.ToLower()))
             {
-                message.Channel.SendMessageAsync("Commands are: \n" +
-                    greetCommand + " - the bot greets you\n" +
-                    prefixCommand + " (<newPrefix>) - get the botPrefix or (optionally) set it\n" +
-                    totalChatTimeCommand + " <username#0000> - get a given users total recorded guild time chat\n" +
-                    totalMessagesCommand + " <username#0000> - get a given users total recorded guild messages sent\n" +
-                    updateRanksCommand + " - recalculates everyones rank\n" +
-                    setRankTimeIntervalCommand + " <hours> - change time interval between when users ranks are calculated. This command resets the timer. \n" +
-                    changeRankCriteria + " <Msg, Vc, or Msg&Vc> - set whether people are ranked by messages, voice chat or both. \n" +
-                    getUserRankCommand + " <username#0000> - get a given users rank\n" +
-                    setRankMemberLimitCommand + " <RankRole>, <Amount> - changes the number of users in a RankRole to the given Amount\n" +
-                    botInfoCommand + " gives relevant bot information" +
-                    //TODO:
-                    //set number of users per given role
+                message.Channel.SendMessageAsync("Commands: \n" +
+                    "- **" + greetCommand + "**" + " : the bot greets you.\n" +
+                    "- **" + prefixCommand + "**" + " *(<newPrefix>)* : get the botPrefix OR (optional) change it.\n" +
+                    "- **" + totalChatTimeCommand + "**" + " *<username(#0000)>* : get a given users total recorded guild (AKA server) time chat.\n" +
+                    "- **" + totalMessagesCommand + "**" + " *<username(#0000)>* : get a given users total recorded guild (AKA server) messages sent.\n" +
+                    "- **" + updateRanksCommand + "**" + " : recalculates everyones rank.\n" +
+                    "- **" + setRankTimeIntervalCommand + "**" + " *<hours>* : change time interval between when users ranks are calculated. This command resets the timer. \n" +
+                    "- **" + changeRankCriteria + "**" + " *<criteria>* : sets what criteria people are ranked by. \n                     Criteria can be: *Msg*(messages), *Vc*(voice chat) or *Msg&Vc*(both). *Avg*(average) or *Total*(totals). *Month*(month), *Week*(week), or *Day*(day).\n" +
+                    "- **" + getUserRankCommand + "**" + " *<username(#0000)>* : get a given users rank.\n" +
+                    "- **" + setRankMemberLimitCommand + "**" + " *<RankRole>, <Amount>* : changes the number of users in a RankRole to the given Amount.\n" +
+                    "- **" + botInfoCommand + "**" + " : gives relevant bot configuration information." +
                     "");
 
                 return Task.CompletedTask;
@@ -135,29 +135,54 @@ namespace DiscordUserStatsBot
                 string roleNames = "";
                 for (int index = 0; index < myCont.userStatRolesRef.rankRoles.Length; index++)
                 {
-                    roleNames += $"\n       {myCont.userStatRolesRef.rankRoles[index].name} : \n                Member limit = {myCont.userStatRolesRef.rankRoles[index].memberLimit}";
+                    roleNames += $"\n       __{myCont.userStatRolesRef.rankRoles[index].name}__ : \n                  Member limit = {myCont.userStatRolesRef.rankRoles[index].memberLimit}";
                 }
 
-                string rankBy = "";
+                string rankType = "";
                 if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.messages))
                 {
-                    rankBy = "Messages";
+                    rankType = "Messages";
                 }
                 else if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.voiceChatTime))
                 {
-                    rankBy = "Voice Chat Time";
+                    rankType = "Voice Chat Time";
                 }
                 else if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.msgAndVCT))
                 {
-                    rankBy = "Messages and Voice Chat time";
+                    rankType = "Messages and Voice Chat time";
+                }
+
+                string rankBy = "";
+                if (UserStatTracker.rankConfig.rankBy.Equals(UserStatTracker.RankConfig.RankByType.average))
+                {
+                    rankBy = "Average";
+                }
+                else if (UserStatTracker.rankConfig.rankBy.Equals(UserStatTracker.RankConfig.RankByType.total))
+                {
+                    rankBy = "Total";
+                }
+
+                string rankTime = "";
+                if (UserStatTracker.rankConfig.rankTime.Equals(UserStatTracker.RankConfig.RankTimeType.month))
+                {
+                    rankTime = "Month";
+                }
+                else if (UserStatTracker.rankConfig.rankTime.Equals(UserStatTracker.RankConfig.RankTimeType.week))
+                {
+                    rankTime = "Week";
+                }
+                else if (UserStatTracker.rankConfig.rankTime.Equals(UserStatTracker.RankConfig.RankTimeType.day))
+                {
+                    rankTime = "Day";
                 }
 
                 //returns bot info
                 message.Channel.SendMessageAsync($"Bot info: \n" +
-                    $"Assign ranks time interval: {myCont.GetAssignRolesInterval().ToString(@"dd\.hh\:mm\:ss")} \n" +
-                    $"What time ranks will be recalculated: {(myCont.GetAssignRolesTimerStart() + myCont.GetAssignRolesInterval()).ToString()} \n" +
-                    $"Users ranked by: {rankBy}\n" + 
-                    $"Rank roles: {roleNames}");
+                    $"- Bot command prefix: *{botCommandPrefix}* \n" +
+                    $"- Assign ranks time interval: *{myCont.GetAssignRolesInterval().ToString(@"dd\.hh\:mm\:ss")}* \n" +
+                    $"- When ranks will be recalculated: *{(myCont.GetAssignRolesTimerStart() + myCont.GetAssignRolesInterval()).ToString()}* \n" +
+                    $"- Users ranked by: *{rankBy} {rankType} in the past {rankTime}*.\n" + 
+                    $"- Rank roles: {roleNames}");
 
                 return Task.CompletedTask;
             }
@@ -211,15 +236,35 @@ namespace DiscordUserStatsBot
 
                 if (stringAfterCommand.ToLower().Equals("Msg".ToLower()))
                 {
-                    UserStatTracker.ChangeRankType(UserStatTracker.RankConfig.RankType.messages);
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.messages);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Vc".ToLower()))
                 {
-                    UserStatTracker.ChangeRankType(UserStatTracker.RankConfig.RankType.voiceChatTime);
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.voiceChatTime);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Msg&Vc".ToLower()))
                 {
-                    UserStatTracker.ChangeRankType(UserStatTracker.RankConfig.RankType.msgAndVCT);
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.msgAndVCT);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Avg".ToLower()))
+                {
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankByType.average);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Total".ToLower()))
+                {
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankByType.total);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Month".ToLower()))
+                {
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.month);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Week".ToLower()))
+                {
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.week);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Day".ToLower()))
+                {
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.day);
                 }
                 else
                 {
@@ -235,19 +280,6 @@ namespace DiscordUserStatsBot
                 wasBotCommand = true;
 
                 myCont.userStatRolesRef.AssignRoles(guildRef);
-
-            }
-            else if (command.Equals(rankMemberLimitCommand.ToLower()))
-            {
-                wasBotCommand = true;
-
-                for (int index = 0; index < myCont.userStatRolesRef.rankRoles.Length; index++)
-                {
-                    if (myCont.userStatRolesRef.rankRoles[index].name.ToLower().Equals(stringAfterCommand.ToLower()))
-                    {
-                        message.Channel.SendMessageAsync($@"{myCont.userStatRolesRef.rankRoles[index].name} memberLimit is {myCont.userStatRolesRef.rankRoles[index].memberLimit}.");
-                    }
-                }
 
             }
             else if (command.Equals(getUserRankCommand.ToLower()))
@@ -267,8 +299,7 @@ namespace DiscordUserStatsBot
 
                     if (tempUserStat == null)
                     {
-                        message.Channel.SendMessageAsync($@"Sorry there is no data on {userName}.");
-                        //This could possibly be a logic error: one of the two dictionaries is lacking an entry for this user
+                        message.Channel.SendMessageAsync($@"Sorry there is no data on {userName}. If there are multiple users with this username try again with the user's discriminator (#0000).");
 
                         return Task.CompletedTask;
                     }
@@ -298,8 +329,7 @@ namespace DiscordUserStatsBot
 
                     if (tempUserStat == null)
                     {
-                        message.Channel.SendMessageAsync($@"Sorry there is no data on {userName}.");
-                        //This could possibly be a logic error: one of the two dictionaries is lacking an entry for this user
+                        message.Channel.SendMessageAsync($@"Sorry there is no data on {userName}. If there are multiple users with this username try again with the user's discriminator (#0000).");
 
                         return Task.CompletedTask;
                     }
@@ -348,8 +378,7 @@ namespace DiscordUserStatsBot
 
                     if (tempUserStat == null)
                     {
-                        message.Channel.SendMessageAsync($@"Sorry there is no data on {userName}.");
-                        //This could possibly be a logic error: one of the two dictionaries is lacking an entry for this user
+                        message.Channel.SendMessageAsync($@"Sorry there is no data on {userName}. If there are multiple users with this username try again with the user's discriminator (#0000).");
 
                         return Task.CompletedTask;
                     }
@@ -398,7 +427,7 @@ namespace DiscordUserStatsBot
                 //update roles
                 myCont.userStatRolesRef.AssignRoles(guildRef);
                 //save roles
-                myCont.userStatRolesRef.SaveRoles(guildRef, myCont.saveHandlerRef);
+                myCont.userStatRolesRef.SaveRankRoles(guildRef, myCont.saveHandlerRef);
 
             }
             //------------------------------------------

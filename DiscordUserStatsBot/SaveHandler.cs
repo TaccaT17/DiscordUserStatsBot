@@ -90,7 +90,35 @@ namespace DiscordUserStatsBot
             }
         }
 
+        public void SaveObject<T>(T objectToSave, string nameOfSaveFile)
+        {
+            string jsonDataString = JsonConvert.SerializeObject(objectToSave, Formatting.Indented);
 
+            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + ".json";
+
+            File.WriteAllText(saveFilePath, jsonDataString);
+
+            //Console.WriteLine("Saved!");
+        }
+
+        public void LoadObject<T>(out T objectToLoad, string nameOfSaveFile)
+        {
+            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + ".json";
+
+            if (File.Exists(saveFilePath))
+            {
+                string jsonDataString = File.ReadAllText(saveFilePath);
+                objectToLoad = JsonConvert.DeserializeObject<T>(jsonDataString);
+                //Console.WriteLine("Loaded!");
+                //return objectToLoad;
+            }
+            else
+            {
+                Console.WriteLine($@"Load file '{nameOfSaveFile}' doesn't exist");
+                objectToLoad = default(T);
+                //return objectToLoad;
+            }
+        }
 
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion
