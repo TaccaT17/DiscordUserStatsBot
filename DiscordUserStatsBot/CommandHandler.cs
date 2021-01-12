@@ -98,6 +98,7 @@ namespace DiscordUserStatsBot
                 wasBotCommand = true;
                 message.Channel.SendMessageAsync("Hello fellow user.");
                 message.Channel.SendMessageAsync("Whalecome...");
+                message.Channel.SendMessageAsync($"Type '{botCommandPrefix}help' for a list of bot commands.");
                 return Task.CompletedTask;
             }
 
@@ -106,25 +107,29 @@ namespace DiscordUserStatsBot
                 wasBotCommand = true;
                 message.Channel.SendMessageAsync($@"The goal of the StatTracker bot is to create a more organized sidebar so active users appear near the top." +
                                                  $@"The bot does this by doing two things: " + 
-                                                 $@"1. It records active users' guild (AKA server) activity over the past month (their time in chat + messages sent) " + 
-                                                 $@"2. It assigns users a rank and corresponding role based off of their activity." +
-                                                 $@"You have the option to turn off the sidebar organization if you just want a bit of fun comparing stats with you're friends");
+                                                 $@"    **1.** It records active users' guild (AKA server) activity over the past month (their time in chat + messages sent). " + 
+                                                 $@"    **2.** It assigns users a rank and corresponding role based off of their activity." +
+                                                 $@"You have the option to turn off the sidebar organization if you just want a bit of fun comparing stats with your friends." +
+                                                 $@"Type '{botCommandPrefix}help' for a list of bot commands.");
                 return Task.CompletedTask;
             }
 
             else if (command.Equals(helpCommand.ToLower()))
             {
-                message.Channel.SendMessageAsync("Commands: \n" +
+                message.Channel.SendMessageAsync("Commands:\n" +
+                    $"*(current botPrefix is '{botCommandPrefix}')*\n" +
                     "- **" + greetCommand + "**" + " : the bot greets you.\n" +
+                    "- **" + aboutCommand + "**" + " : about this bot.\n" +
+                    "- **" + helpCommand + "**" + " : a list of bot commands.\n" +
+                    "- **" + botInfoCommand + "**" + " : gives relevant bot configuration information.\n" +
                     "- **" + prefixCommand + "**" + " *(<newPrefix>)* : get the botPrefix OR (optional) change it.\n" +
-                    "- **" + totalChatTimeCommand + "**" + " *<username(#0000)>* : get a given users total recorded guild (AKA server) time chat.\n" +
-                    "- **" + totalMessagesCommand + "**" + " *<username(#0000)>* : get a given users total recorded guild (AKA server) messages sent.\n" +
                     "- **" + updateRanksCommand + "**" + " : recalculates everyones rank.\n" +
                     "- **" + setRankTimeIntervalCommand + "**" + " *<hours>* : change time interval between when users ranks are calculated. This command resets the timer. \n" +
-                    "- **" + changeRankCriteria + "**" + " *<criteria>* : sets what criteria people are ranked by. \n                     Criteria can be: *Msg*(messages), *Vc*(voice chat) or *Msg&Vc*(both). *Avg*(average) or *Total*(totals). *Month*(month), *Week*(week), or *Day*(day).\n" +
-                    "- **" + getUserRankCommand + "**" + " *<username(#0000)>* : get a given users rank.\n" +
+                    "- **" + changeRankCriteria + "**" + " *<criteria>* : sets what criteria people are ranked by. \n                     Criteria can be: messages(*Msg*), voice chat(*Vc*) or both(*Msg&Vc*). average (*Avg*) or totals(*Total*). month(*Month*), week(*Week*), or day(*Day*).\n" +
                     "- **" + setRankMemberLimitCommand + "**" + " *<RankRole>, <Amount>* : changes the number of users in a RankRole to the given Amount.\n" +
-                    "- **" + botInfoCommand + "**" + " : gives relevant bot configuration information." +
+                    "- **" + getUserRankCommand + "**" + " *<username(#0000)>* : get a given user's rank.\n" +
+                    "- **" + totalChatTimeCommand + "**" + " *<username(#0000)>* : get a given user's total recorded chat time in this guild (AKA server).\n" +
+                    "- **" + totalMessagesCommand + "**" + " *<username(#0000)>* : get a given user's total recorded messages sent in this guild (AKA server).\n" +
                     "");
 
                 return Task.CompletedTask;
@@ -135,7 +140,7 @@ namespace DiscordUserStatsBot
                 string roleNames = "";
                 for (int index = 0; index < myCont.userStatRolesRef.rankRoles.Length; index++)
                 {
-                    roleNames += $"\n       __{myCont.userStatRolesRef.rankRoles[index].name}__ : \n                  Member limit = {myCont.userStatRolesRef.rankRoles[index].memberLimit}";
+                    roleNames += $"\n       **__{myCont.userStatRolesRef.rankRoles[index].name}__** : \n                  - Member limit = **{myCont.userStatRolesRef.rankRoles[index].memberLimit}**";
                 }
 
                 string rankType = "";
@@ -149,7 +154,7 @@ namespace DiscordUserStatsBot
                 }
                 else if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.msgAndVCT))
                 {
-                    rankType = "Messages and Voice Chat time";
+                    rankType = "Messages and Voice Chat Time";
                 }
 
                 string rankBy = "";
@@ -178,10 +183,10 @@ namespace DiscordUserStatsBot
 
                 //returns bot info
                 message.Channel.SendMessageAsync($"Bot info: \n" +
-                    $"- Bot command prefix: *{botCommandPrefix}* \n" +
-                    $"- Assign ranks time interval: *{myCont.GetAssignRolesInterval().ToString(@"dd\.hh\:mm\:ss")}* \n" +
-                    $"- When ranks will be recalculated: *{(myCont.GetAssignRolesTimerStart() + myCont.GetAssignRolesInterval()).ToString()}* \n" +
-                    $"- Users ranked by: *{rankBy} {rankType} in the past {rankTime}*.\n" + 
+                    $"- Bot command prefix: **{botCommandPrefix}** \n" +
+                    $"- Assign ranks time interval: **{myCont.GetAssignRolesInterval().ToString(@"dd\.hh\:mm\:ss")}** \n" +
+                    $"- When ranks will be recalculated: **{(myCont.GetAssignRolesTimerStart() + myCont.GetAssignRolesInterval()).ToString()}** \n" +
+                    $"- Users ranked by: **{rankBy} {rankType}** in the past **{rankTime}**.\n" + 
                     $"- Rank roles: {roleNames}");
 
                 return Task.CompletedTask;
