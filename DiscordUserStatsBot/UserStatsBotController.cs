@@ -17,14 +17,11 @@ using System.Timers;
 
 //CURRENT TASK: 
 
-//Debugging Issues: rankConfig not saving correctly
+//Debugging Issues:
 
 ///Completed
-///added rank by averages vs. totals, day, week, month to RankBy command
-///redid saves/load so should now cover everything (including assignRolesTimeSpan, rankConfig and rankedUsers list)
-///made "help" command more readable
-///deleted debugging functions in UserStatTracker class
-///included rankTime and rankBy in botinfo
+///
+
 
 
 

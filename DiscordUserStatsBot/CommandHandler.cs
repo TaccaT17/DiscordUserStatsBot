@@ -236,35 +236,35 @@ namespace DiscordUserStatsBot
 
                 if (stringAfterCommand.ToLower().Equals("Msg".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.messages);
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.messages, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Vc".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.voiceChatTime);
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.voiceChatTime, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Msg&Vc".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.msgAndVCT);
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.msgAndVCT, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Avg".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankByType.average);
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankByType.average, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Total".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankByType.total);
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankByType.total, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Month".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.month);
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.month, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Week".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.week);
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.week, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Day".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.day);
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.day, myCont);
                 }
                 else
                 {

@@ -333,20 +333,20 @@ namespace DiscordUserStatsBot
         #endregion
 
         //TODO: way to make these one function?
-        public static void ChangeRankCriteria(RankConfig.RankType newRankType)
+        public static void ChangeRankCriteria(RankConfig.RankType newRankType, UserStatsBotController contRef)
         {
             rankConfig.rankType = newRankType;
-            //gets saved b/c AssignRoles() called
+            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig));
         }
-        public static void ChangeRankCriteria(RankConfig.RankByType newRankByType)
+        public static void ChangeRankCriteria(RankConfig.RankByType newRankByType, UserStatsBotController contRef)
         {
             rankConfig.rankBy = newRankByType;
-            //gets saved b/c AssignRoles() called
+            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig));
         }
-        public static void ChangeRankCriteria(RankConfig.RankTimeType newRankTimeType)
+        public static void ChangeRankCriteria(RankConfig.RankTimeType newRankTimeType, UserStatsBotController contRef)
         {
             rankConfig.rankTime = newRankTimeType;
-            //gets saved b/c AssignRoles() called
+            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig));
         }
 
 
