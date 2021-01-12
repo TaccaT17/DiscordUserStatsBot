@@ -78,7 +78,7 @@ namespace DiscordUserStatsBot
         public event Func<SocketUser, Task> UserJoinedAVoiceChat;
         public event Func<SocketUser, Task> UserLeftAllVoiceChats;
 
-        private bool trackBotStats = true;
+        private bool trackBotStats = false;
 
         //TODO: Make these singletons
         public SaveHandler saveHandlerRef;
