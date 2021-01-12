@@ -389,25 +389,35 @@ namespace DiscordUserStatsBot
             else
             {
                 int usersWithName = 0;
+                string foundUser = "";
 
                 //see if they just weren't capitalizing correctly or were excluding discriminator
                 foreach(KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
                 {
                     //Console.WriteLine($@"   Name attempt: {item.Key.ToLower().Substring(0, item.Key.Length - 5)}");
 
+                    //Console.WriteLine($@"User name is {(item.Key.ToLower().Substring(0, item.Key.Length - 5))}");
+                    //Console.WriteLine($@"userName is {userName}");
+
                     if (item.Key.ToLower().Equals(userName.ToLower()) || (item.Key.ToLower().Substring(0, item.Key.Length - 5)).Equals(userName.ToLower()))
                     {
-                        userName = item.Key;
+                        foundUser = item.Key;
                         usersWithName++;
-                        //Console.WriteLine("Name was simply not in correct casing or did not include discriminator");
+                        //Console.WriteLine($@"       Found user with name {userName}");
                     }
                 }
 
-                if(usersWithName > 1)
+                if (usersWithName > 1)
                 {
-                    //Too many users with same name
+                    Console.WriteLine("Found multiple users with same name. : getuserstat");
+                    return userStatInst;
                 }
-                else if (guildUserNameToIDIndex.ContainsKey(userName))
+                else
+                {
+                    userName = foundUser;
+                }
+
+                if (guildUserNameToIDIndex.ContainsKey(userName))
                 {
                     userStatInst = guildUserIDToStatIndex[guildUserNameToIDIndex[userName]];
                 }
@@ -438,6 +448,7 @@ namespace DiscordUserStatsBot
             else
             {
                 int usersWithName = 0;
+                string foundUser = "";
 
                 //see if they just weren't capitalizing correctly or lacking discriminator
                 foreach (KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
@@ -446,15 +457,21 @@ namespace DiscordUserStatsBot
                     {
                         userName = item.Key;
                         usersWithName++;
-                        //Console.WriteLine("Name was simply not in correct casing or did not include discriminator");
+                        //Console.WriteLine($@"Found user with name {userName}");
                     }
                 }
 
                 if (usersWithName > 1)
                 {
-                    //Too many users with same name
+                    //Console.WriteLine("Found multiple users with same name. : getuserstat");
+                    return userID;
                 }
-                else if (guildUserNameToIDIndex.ContainsKey(userName))
+                else
+                {
+                    userName = foundUser;
+                }
+                
+                if (guildUserNameToIDIndex.ContainsKey(userName))
                 {
                     userID = guildUserNameToIDIndex[userName];
                 }
