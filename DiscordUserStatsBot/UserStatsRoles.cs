@@ -86,7 +86,7 @@ namespace DiscordUserStatsBot
 
             RankUsers();
 
-            //go through rankedList and give each user appropriate role
+            //go through roleList and give each role appropriate users
             int rankedUserIndex = 0;
             for (int rankRole = 0; rankRole < rankRoles.Length; rankRole++)
             {
@@ -106,7 +106,7 @@ namespace DiscordUserStatsBot
                     
                     //iterate though given users roles
                     SocketRole usersExistingRoles;
-                    IEnumerator<SocketRole> userExistingRoleE = guildRef.GetUser(rankedUsers[rankedUserIndex]).Roles.GetEnumerator();
+                    IEnumerator<SocketRole> userExistingRoleE = guildRef.GetUser(rankedUsers[rankedUserIndex]).Roles.GetEnumerator(); //Null reference here. Bot broke because user offline? Mobile
                     bool hasRole = false;
                     while (userExistingRoleE.MoveNext())
                     {
@@ -142,6 +142,26 @@ namespace DiscordUserStatsBot
                     }
 
                     rankedUserIndex++;
+                }
+            }
+
+            //if there are more users to go through and delete any rankRoles they have
+            for (; rankedUserIndex < rankedUsers.Count; rankedUserIndex++)       //iterate through rest of users
+            {
+                SocketRole usersExistingRoles;
+                IEnumerator<SocketRole> userExistingRoleE = guildRef.GetUser(rankedUsers[rankedUserIndex]).Roles.GetEnumerator(); //Null reference here. Bot broke because user offline? Mobile
+                while (userExistingRoleE.MoveNext())            //iterate through users roles
+                {
+                    usersExistingRoles = userExistingRoleE.Current;
+
+                    foreach(UserStatRole rankRole in rankRoles)     //iterate through rankRoles
+                    {
+                        if (usersExistingRoles.Id.Equals(rankRole.Id))
+                        {
+                            await guildRef.GetUser(rankedUsers[rankedUserIndex]).RemoveRoleAsync(guildRef.GetRole(rankRole.Id));
+                        }
+                    }
+                    
                 }
             }
 
@@ -305,7 +325,7 @@ namespace DiscordUserStatsBot
             }
 
             //save roles array
-            saveRef.SaveArray(rankRoles, rolesSaveFileName);
+            saveRef.SaveArray(rankRoles, rolesSaveFileName, guildRef);
 
             //Console.WriteLine("Roles Saved");
 
@@ -314,12 +334,12 @@ namespace DiscordUserStatsBot
 
         public void SaveRankedUsers()
         {
-            myCont.saveHandlerRef.SaveObject(rankedUsers, nameof(rankedUsers));
+            myCont.saveHandlerRef.SaveObject(rankedUsers, nameof(rankedUsers), myCont.GuildRef);
         }
 
         public void LoadRankedUsers()
         {
-            myCont.saveHandlerRef.LoadObject(out rankedUsers, nameof(rankedUsers));
+            myCont.saveHandlerRef.LoadObject(out rankedUsers, nameof(rankedUsers), myCont.GuildRef);
         }
 
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------

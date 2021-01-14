@@ -1,4 +1,5 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -34,11 +35,15 @@ namespace DiscordUserStatsBot
         //bool to stop commands for this bot from being recorded in UserStat
         public bool wasBotCommand;
 
+        IEmote emoteClap;
+
         //CONSTRUCTOR
         public CommandHandler(UserStatsBotController myController, SocketGuild guildReference)
         {
             myCont = myController;
             guildRef = guildReference;
+
+            emoteClap = new Emoji("👏");
         }
 
 
@@ -59,6 +64,13 @@ namespace DiscordUserStatsBot
             else if (message.Author.IsBot)
             {
                 //Console.WriteLine("Message is from a bot");
+                return Task.CompletedTask;
+            }
+
+            //ignore if this message was not sent in this guild
+            else if (!(((SocketGuildChannel)(message.Channel)).Guild.Id.Equals(guildRef.Id)))
+            {
+                //Console.WriteLine("Message sent in other guild");
                 return Task.CompletedTask;
             }
             //--------------------------------------------------------------------------------------------------
@@ -105,12 +117,12 @@ namespace DiscordUserStatsBot
             if (command.Equals(aboutCommand.ToLower()))
             {
                 wasBotCommand = true;
-                message.Channel.SendMessageAsync($@"The goal of the StatTracker bot is to create a more organized sidebar so active users appear near the top." +
-                                                 $@"The bot does this by doing two things: " + 
-                                                 $@"    **1.** It records active users' guild (AKA server) activity over the past month (their time in chat + messages sent). " + 
-                                                 $@"    **2.** It assigns users a rank and corresponding role based off of their activity." +
-                                                 $@"You have the option to turn off the sidebar organization if you just want a bit of fun comparing stats with your friends." +
-                                                 $@"Type '{botCommandPrefix}help' for a list of bot commands.");
+                message.Channel.SendMessageAsync("The goal of the StatTracker bot is to create a more organized sidebar so active users appear near the top. \n" +
+                                                 "The bot does this by doing two things: \n" + 
+                                                 "    **1.** It records active users' guild (AKA server) activity over the past month (their time in chat + messages sent). \n" + 
+                                                 "    **2.** It assigns users a rank and corresponding role based off of their activity.\n" +
+                                                 "You have the option to turn off the sidebar organization if you just want a bit of fun comparing stats with your friends.\n" +
+                                                 $"Type '{botCommandPrefix}help' for a list of bot commands.");
                 return Task.CompletedTask;
             }
 
@@ -286,6 +298,8 @@ namespace DiscordUserStatsBot
 
                 myCont.userStatRolesRef.AssignRoles(guildRef);
 
+                message.AddReactionAsync(emoteClap);
+
             }
             else if (command.Equals(getUserRankCommand.ToLower()))
             {
@@ -423,6 +437,12 @@ namespace DiscordUserStatsBot
                 {
                     if (myCont.userStatRolesRef.rankRoles[index].name.ToLower().Equals(roleName.ToLower()))
                     {
+                        if(newMemberLimit < 1)
+                        {
+                            newMemberLimit = 1;
+                            Console.WriteLine("MemberLimit amount too low. Changed to '1'");
+                        }
+
                         //...set new amount 
                         myCont.userStatRolesRef.rankRoles[index].memberLimit = newMemberLimit;
                         Console.WriteLine($@"{myCont.userStatRolesRef.rankRoles[index].name} memberLimit changed to {newMemberLimit}.");

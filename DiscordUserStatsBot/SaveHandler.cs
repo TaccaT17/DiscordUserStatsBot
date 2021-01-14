@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using Discord.WebSocket;
 using Newtonsoft.Json;
-
-
-//TODO: 
 
 
 namespace DiscordUserStatsBot
@@ -23,27 +21,27 @@ namespace DiscordUserStatsBot
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         public SaveHandler()
         {
-            fileFolderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location); //Gets path that .dll is in not path that .exe is in
+            fileFolderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\saves"; //Gets path that .dll is in not path that .exe is in
         }
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         #region FUNCTIONS
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-        public void SaveDictionary<K, T>(Dictionary<K, T> dictionaryToSave, string nameOfSaveFile)
+        public void SaveDictionary<K, T>(Dictionary<K, T> dictionaryToSave, string nameOfSaveFile, SocketGuild guild)
         {
             string jsonDataString = JsonConvert.SerializeObject(dictionaryToSave, Formatting.Indented);
 
-            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + ".json";
+            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
 
             File.WriteAllText(saveFilePath, jsonDataString);
 
             //Console.WriteLine("Saved!");
         }
 
-        public Dictionary<K, T> LoadDictionary<K, T>(out Dictionary<K, T> dictionaryToLoad, string nameOfSaveFile)
+        public Dictionary<K, T> LoadDictionary<K, T>(out Dictionary<K, T> dictionaryToLoad, string nameOfSaveFile, SocketGuild guild)
         {
-            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + ".json";
+            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
 
             if (File.Exists(saveFilePath))
             {
@@ -60,20 +58,20 @@ namespace DiscordUserStatsBot
             }
         }
 
-        public void SaveArray<T>(T[] arrayToSave, string nameOfSaveFile)
+        public void SaveArray<T>(T[] arrayToSave, string nameOfSaveFile, SocketGuild guild)
         {
             string jsonDataString = JsonConvert.SerializeObject(arrayToSave, Formatting.Indented);
 
-            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + ".json";
+            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
 
             File.WriteAllText(saveFilePath, jsonDataString);
 
             //Console.WriteLine("Saved!");
         }
 
-        public T[] LoadArray<T>(out T[] arrayToLoad, string nameOfSaveFile)
+        public T[] LoadArray<T>(out T[] arrayToLoad, string nameOfSaveFile, SocketGuild guild)
         {
-            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + ".json";
+            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
 
             if (File.Exists(saveFilePath))
             {
@@ -90,20 +88,20 @@ namespace DiscordUserStatsBot
             }
         }
 
-        public void SaveObject<T>(T objectToSave, string nameOfSaveFile)
+        public void SaveObject<T>(T objectToSave, string nameOfSaveFile, SocketGuild guild)
         {
             string jsonDataString = JsonConvert.SerializeObject(objectToSave, Formatting.Indented);
 
-            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + ".json";
+            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
 
             File.WriteAllText(saveFilePath, jsonDataString);
 
             //Console.WriteLine("Saved!");
         }
 
-        public void LoadObject<T>(out T objectToLoad, string nameOfSaveFile)
+        public void LoadObject<T>(out T objectToLoad, string nameOfSaveFile, SocketGuild guild)
         {
-            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + ".json";
+            string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
 
             if (File.Exists(saveFilePath))
             {

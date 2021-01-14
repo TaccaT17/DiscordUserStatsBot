@@ -336,17 +336,17 @@ namespace DiscordUserStatsBot
         public static void ChangeRankCriteria(RankConfig.RankType newRankType, UserStatsBotController contRef)
         {
             rankConfig.rankType = newRankType;
-            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig));
+            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig), contRef.GuildRef);
         }
         public static void ChangeRankCriteria(RankConfig.RankByType newRankByType, UserStatsBotController contRef)
         {
             rankConfig.rankBy = newRankByType;
-            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig));
+            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig), contRef.GuildRef);
         }
         public static void ChangeRankCriteria(RankConfig.RankTimeType newRankTimeType, UserStatsBotController contRef)
         {
             rankConfig.rankTime = newRankTimeType;
-            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig));
+            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig), contRef.GuildRef);
         }
 
 

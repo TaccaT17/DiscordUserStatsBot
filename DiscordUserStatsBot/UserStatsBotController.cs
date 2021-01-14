@@ -17,10 +17,14 @@ using System.Timers;
 
 //CURRENT TASK: 
 
-//Debugging Issues:
+//Debugging Issues: add check to events so that user doing something in one guild doesnt affect their stats in another
 
 ///Completed
-///
+///Prevented users from inputing invalid memberLimit
+///fixed it so extra users lose the their role
+///made it so can deal with multiple guilds at once
+///changed so saves/loads include guildID
+///fixed bug that impacted stats in other guilds
 
 ///FUTURE TASKS:
 ///Make it get the guild it's a part of on start up AKA make it so it deals with multiple guilds at once
@@ -43,33 +47,36 @@ using System.Timers;
 ///put all JSON save files into same folder
 ///Ensure that when any save file deleted bot can deal with it
 
+
+///Dealing with guilds attempt:
+///get list of all guilds this bot a part of
+///Go through each one and 
+///for every guild create an instance of this bot (how do I get it not to infinite loop???)
+///all save files have guildname(id?) as part of saveName
+///asd
+///Make a list of already figured out guilds and then at beginning of bot set up it just goes through each and checks to make sure not on list
+///Also at beginning of message/voicechat events switch to apprpriate guild?
+///
+///static iteratior int/enumerator 
+///get guilds
+///start bot for this guild and then 
+///
 namespace DiscordUserStatsBot
 {
     class UserStatsBotController
     {
-        public static void Main(string[] args)
-        => new UserStatsBotController().MainAsync().GetAwaiter().GetResult();
-
-
         #region VARIABLES
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-        private DiscordSocketClient client; //         <--------------------------------THIS IS YOUR REFERENCE TO EVERYTHING
-
-        private bool devMode = true;
+        //private bool devMode = true;
 
         //TODO: make these generic
-        private const ulong TBE_GUILD_ID = 767845719570382900;
-        private const ulong TBE_DEBUG_TEXT_CHANNEL_ID = 767845719570382903;
-        private const ulong TBE_DEBUG_VOICE_CHANNEL_ID = 767845719570382904;
-
-
+        //private const ulong TBE_GUILD_ID = 767845719570382900;
+        //private const ulong TBE_DEBUG_TEXT_CHANNEL_ID = 767845719570382903;
+        //private const ulong TBE_DEBUG_VOICE_CHANNEL_ID = 767845719570382904;
 
         private SocketGuild guildRef;
-        private SocketTextChannel debugTextChannelRef;
-        private SocketVoiceChannel debugVoiceChannelRef;
-
-        
+        //private SocketTextChannel debugTextChannelRef;
+        //private SocketVoiceChannel debugVoiceChannelRef;
 
         //dictionaries that record users and their corresponding UserStats
         public Dictionary<ulong, UserStatTracker> guildUserIDToStatIndex;
@@ -80,21 +87,26 @@ namespace DiscordUserStatsBot
 
         private bool trackBotStats = false;
 
-        //TODO: Make these singletons
         public SaveHandler saveHandlerRef;
         public UserStatsRoles userStatRolesRef;
         private CommandHandler commandHandlerRef;
-
-        //TODO: rank config settings to save
-        //TODO: save list of rankedUsers in UserStatsRoles
 
         //assign roles timer
         private System.Timers.Timer assignRolesTimer;
         private TimeSpan assignRolesTimeSpan;
         private DateTime assignRolesStartTime;
 
-        [Newtonsoft.Json.JsonProperty]
-        private UserStatTracker.RankConfig rankConfigSave;
+        //[Newtonsoft.Json.JsonProperty]
+        //private UserStatTracker.RankConfig rankConfigSave;
+
+        public SocketGuild GuildRef
+        {
+            get
+            {
+                return guildRef;
+            }
+        }
+
 
         //--------------------------------------------------------------------------------------------------------------------------------------------------------------- 
         #endregion
@@ -103,15 +115,12 @@ namespace DiscordUserStatsBot
         #region FUNCTIONS
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #region InitFunctions
-        public async Task MainAsync()
+        
+     
+        public UserStatsBotController(DiscordSocketClient client, SocketGuild guild)
         {
-            DiscordSocketConfig config = new DiscordSocketConfig();
-            config.AlwaysDownloadUsers = true;
-
-            client = new DiscordSocketClient(config);
-            
-            client.Log += Log;
-
+            //EVENTS
+            //-------------------------------------------------------------------------------------------------------------
             client.UserVoiceStateUpdated += VoiceChatChange;
 
             //Times when the bot will create an entry for a user
@@ -119,27 +128,15 @@ namespace DiscordUserStatsBot
             client.MessageReceived += AddNewUserToStatBotIndex;
             UserJoinedAVoiceChat += AddNewUserToStatBotIndex;
 
-            client.Ready += BotSetUp; //Ready is fired when the bot connects to server
-
             //For record user stats
             UserJoinedAVoiceChat += StartRecordingVCTime;
             UserLeftAllVoiceChats += StopRecordingVCTime;
 
             client.RoleUpdated += SaveRolesSub;
 
-            //discord people/bots/objects have a "token" AKA ID that is a password/username
-            // not secure to hardcode token so instead will get it from saved file (under TomsDiscordBot->bin->Debug->netcoreapp3.1)
-            var token = File.ReadAllText("token.txt");
 
-            await client.LoginAsync(TokenType.Bot, token);
-            await client.StartAsync();
+            //-------------------------------------------------------------------------------------------------------------
 
-            // wait for an indefinite amount of time
-            await Task.Delay(-1);
-        }
-     
-        private Task BotSetUp()
-        {
             //TODO:
             //called when bot either joins guild, when bot comes online. 
             //Will check to see if bot set up and up to date. If not will update.
@@ -147,28 +144,11 @@ namespace DiscordUserStatsBot
             //get guild(AKA server)
             if (guildRef == null)
             {
-                if (devMode)
-                {
-                    guildRef = client.GetGuild(TBE_GUILD_ID);
-                }
-                else
-                {
-                    //get guilds this bot is a part of
-                    //... then makes a instance of this bot with a new directory for each?
-
-                    //TODO: get the guild it just connected to and set as guildRef. Something about Context?
-                }
+                guildRef = guild;
 
                 Console.WriteLine($"Set up new guild reference to {guildRef.Name}");
 
                 //TODO: get relevant info AKA if this bot is new to the server make dictioneries, if not get dictionaries
-            }
-
-            if (devMode)
-            {
-                //get debug channels
-                debugTextChannelRef = guildRef.GetTextChannel(TBE_DEBUG_TEXT_CHANNEL_ID);
-                debugVoiceChannelRef = guildRef.GetVoiceChannel(TBE_DEBUG_VOICE_CHANNEL_ID);
             }
 
             //make save, roles, command classes
@@ -211,14 +191,6 @@ namespace DiscordUserStatsBot
             }*/
 
             Console.WriteLine("Bot set up");
-
-            return Task.CompletedTask;
-        }
-
-        private Task Log(LogMessage msg)
-        {
-            Console.WriteLine(msg.ToString());
-            return Task.CompletedTask;
         }
 
         #endregion
@@ -226,6 +198,12 @@ namespace DiscordUserStatsBot
         #region RecordStatsFunctions
         private Task VoiceChatChange(SocketUser user, SocketVoiceState PreviousVoiceChat, SocketVoiceState CurrentVoiceChat)
         {
+            //return if not correct guild
+            if (!((PreviousVoiceChat.VoiceChannel).Guild.Id.Equals(guildRef.Id)))
+            {
+                return Task.CompletedTask;
+            }
+
             if (CurrentVoiceChat.VoiceChannel != null)
             {
                 UserJoinedAVoiceChat((SocketGuildUser)user);
@@ -252,7 +230,7 @@ namespace DiscordUserStatsBot
         {
             UserStatTracker tempUserStatsRef = GetUserStats(GetUserNamePlusDiscrim((SocketGuildUser)user));
             tempUserStatsRef.RecordGuildUserLeaveVoiceChatTime();
-            saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
+            saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex), guildRef);
 
             return Task.CompletedTask;
         }
@@ -272,7 +250,7 @@ namespace DiscordUserStatsBot
             {
                 tempUserStatsRef.RecordThisUserSentAMessage(message);
 
-                saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
+                saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex), guildRef);
             }
 
             return Task.CompletedTask;
@@ -307,8 +285,8 @@ namespace DiscordUserStatsBot
                 guildUserIDToStatIndex.Add(user.Id, new UserStatTracker(this, usernamePlusDiscrim, user.Id));
                 Console.WriteLine($@"Created a new stat tracker for {usernamePlusDiscrim}");
                 //save dictionariess
-                saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
-                saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
+                saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex), guildRef);
+                saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex), guildRef);
                 return Task.CompletedTask;
             }
             //if just doesn't have id/stat entry make a new one (prior info unfortunately lost) 
@@ -317,7 +295,7 @@ namespace DiscordUserStatsBot
                 //caused by JSON dictionary having been deleted. Make a new id/user entry  
                 guildUserIDToStatIndex.Add(user.Id, new UserStatTracker(this, usernamePlusDiscrim, user.Id));
 
-                saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
+                saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex), guildRef);
 
                 Console.WriteLine($@"ID/UserStat dictionary was at some point deleted. Therefore making a fresh ID/UserStat entry for {usernamePlusDiscrim}.");
 
@@ -358,7 +336,7 @@ namespace DiscordUserStatsBot
                     Console.WriteLine($@"Username/ID dictionary was at some point deleted. Therefore making a fresh Username/ID entry for {usernamePlusDiscrim}.");
                 }
 
-                saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
+                saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex), guildRef);
 
                 return Task.CompletedTask;
             }
@@ -366,6 +344,11 @@ namespace DiscordUserStatsBot
 
         private Task AddNewUserToStatBotIndex(SocketMessage message)
         {
+            if (!(((SocketGuildChannel)(message.Channel)).Guild.Id.Equals(guildRef.Id)))
+            {
+                return Task.CompletedTask;
+            }
+
             AddNewUserToStatBotIndex(message.Author);
             return Task.CompletedTask;
         }
@@ -523,7 +506,6 @@ namespace DiscordUserStatsBot
         private void AssignRolesTimer(TimeSpan timeTillNextAssignRoles)
         {
             assignRolesTimer = new System.Timers.Timer(timeTillNextAssignRoles.TotalMilliseconds);
-            Console.WriteLine($@"Timer interval is {assignRolesTimer.Interval} milliseconds");
             assignRolesStartTime = DateTime.Now;
 
             assignRolesTimer.Elapsed += AssignRolesTimerCallback;
@@ -543,7 +525,7 @@ namespace DiscordUserStatsBot
             userStatRolesRef.AssignRoles(guildRef);
             assignRolesStartTime = DateTime.Now;
             //save assignRolesTimer
-            saveHandlerRef.SaveObject(assignRolesTimeSpan, nameof(assignRolesTimeSpan));
+            saveHandlerRef.SaveObject(assignRolesTimeSpan, nameof(assignRolesTimeSpan), guildRef);
             Console.WriteLine("Assign timer interval changed");
         }
 
@@ -565,6 +547,12 @@ namespace DiscordUserStatsBot
 
         private Task SaveRolesSub(SocketRole roleBefore, SocketRole roleAfter)
         {
+            //return if not correct guild
+            if (!(roleBefore.Guild.Id.Equals(guildRef.Id)))
+            {
+                return Task.CompletedTask;
+            }
+
             //save roles
             userStatRolesRef.SaveRankRoles(guildRef, saveHandlerRef);
 
@@ -581,14 +569,14 @@ namespace DiscordUserStatsBot
             //LOADING
             
             //load roles
-            saveHandlerRef.LoadArray(out userStatRolesRef.rankRoles, userStatRolesRef.rolesSaveFileName);
+            saveHandlerRef.LoadArray(out userStatRolesRef.rankRoles, userStatRolesRef.rolesSaveFileName, guildRef);
             if (userStatRolesRef.rankRoles == null)
             {
                 userStatRolesRef.CreateDefaultRolesArray();
             }
 
             //load roles timer
-            saveHandlerRef.LoadObject(out assignRolesTimeSpan, nameof(assignRolesTimeSpan));
+            saveHandlerRef.LoadObject(out assignRolesTimeSpan, nameof(assignRolesTimeSpan), guildRef);
             if (assignRolesTimeSpan.Equals(default(TimeSpan)))
             {
                 assignRolesTimeSpan = new TimeSpan(24, 0, 0);
@@ -597,7 +585,7 @@ namespace DiscordUserStatsBot
             //TODO: TEST THIS
             //load rank Config
             //saveHandlerRef.LoadObject(out UserStatTracker.rankConfig, nameof(rankConfigSave));
-            saveHandlerRef.LoadObject(out UserStatTracker.rankConfig, nameof(UserStatTracker.rankConfig));
+            saveHandlerRef.LoadObject(out UserStatTracker.rankConfig, nameof(UserStatTracker.rankConfig), guildRef);
             if (!(UserStatTracker.rankConfig.initialized))
             {
                 UserStatTracker.DefaultRankConfig();
@@ -606,8 +594,8 @@ namespace DiscordUserStatsBot
             userStatRolesRef.LoadRankedUsers();
 
             //set up user dictionaries and load any info that already exists
-            saveHandlerRef.LoadDictionary(out guildUserIDToStatIndex, nameof(guildUserIDToStatIndex)); //out keyword passes by reference instead of value
-            saveHandlerRef.LoadDictionary(out guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
+            saveHandlerRef.LoadDictionary(out guildUserIDToStatIndex, nameof(guildUserIDToStatIndex), guildRef); //out keyword passes by reference instead of value
+            saveHandlerRef.LoadDictionary(out guildUserNameToIDIndex, nameof(guildUserNameToIDIndex), guildRef);
 
             if (guildUserNameToIDIndex == null)
             {
@@ -631,17 +619,17 @@ namespace DiscordUserStatsBot
             userStatRolesRef.SaveRankRoles(guildRef, saveHandlerRef);
 
             //save timer time 
-            saveHandlerRef.SaveObject(assignRolesTimeSpan, nameof(assignRolesTimeSpan));
+            saveHandlerRef.SaveObject(assignRolesTimeSpan, nameof(assignRolesTimeSpan), guildRef);
 
             //rank config save
             //rankConfigSave = UserStatTracker.rankConfig;
             //saveHandlerRef.SaveObject(rankConfigSave, nameof(rankConfigSave));
-            saveHandlerRef.SaveObject(UserStatTracker.rankConfig, nameof(UserStatTracker.rankConfig));
+            saveHandlerRef.SaveObject(UserStatTracker.rankConfig, nameof(UserStatTracker.rankConfig), guildRef);
 
             userStatRolesRef.SaveRankedUsers();
 
-            saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex));
-            saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex));
+            saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex), guildRef);
+            saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex), guildRef);
         }
 
         #endregion
