@@ -17,14 +17,14 @@ using System.Timers;
 
 //CURRENT TASK: 
 
-//Debugging Issues: add check to events so that user doing something in one guild doesnt affect their stats in another
+//Debugging Issues:
 
 ///Completed
-///Prevented users from inputing invalid memberLimit
-///fixed it so extra users lose the their role
-///made it so can deal with multiple guilds at once
-///changed so saves/loads include guildID
-///fixed bug that impacted stats in other guilds
+///Fixed voice recording null errors
+///merged userstat commands into one
+///added list that keeps track of users in chat - bot starts/stops recording their stats appropriately
+///fixed so bot messages/vc not recorded based off of bool
+///fixed so if rankedRoles discrepancy bot still works
 
 ///FUTURE TASKS:
 ///Make it get the guild it's a part of on start up AKA make it so it deals with multiple guilds at once
@@ -47,20 +47,28 @@ using System.Timers;
 ///put all JSON save files into same folder
 ///Ensure that when any save file deleted bot can deal with it
 
+//on startup
+//any users that is currently in voice chat
+///1. if user leaves chat and the enter time is not recorded AKA default AKA 0
+///2. 
+///a
+///a
+///a
+///a
+///Person enters chat. They're start time is recorded.
+///bot disconnects
+///person disconnects
+///person reconnects much later
+///bot connects
+///person leaves. Disconnect time recorded.
+///a
+///a
+///a
+///Basically the problem: what do I do if bot doesn't see a user disconnect or reconnect?
+///Solution: 
+///1. when bot connects start record vctime for any users currently in chat
+///2. when bot disconnects stop recording time for any users in chat
 
-///Dealing with guilds attempt:
-///get list of all guilds this bot a part of
-///Go through each one and 
-///for every guild create an instance of this bot (how do I get it not to infinite loop???)
-///all save files have guildname(id?) as part of saveName
-///asd
-///Make a list of already figured out guilds and then at beginning of bot set up it just goes through each and checks to make sure not on list
-///Also at beginning of message/voicechat events switch to apprpriate guild?
-///
-///static iteratior int/enumerator 
-///get guilds
-///start bot for this guild and then 
-///
 namespace DiscordUserStatsBot
 {
     class UserStatsBotController
@@ -107,6 +115,7 @@ namespace DiscordUserStatsBot
             }
         }
 
+        List<SocketUser> usersInChat;
 
         //--------------------------------------------------------------------------------------------------------------------------------------------------------------- 
         #endregion
@@ -134,7 +143,7 @@ namespace DiscordUserStatsBot
 
             client.RoleUpdated += SaveRolesSub;
 
-
+            client.Disconnected += Disconnect;
             //-------------------------------------------------------------------------------------------------------------
 
             //TODO:
@@ -177,6 +186,21 @@ namespace DiscordUserStatsBot
             //calculate/assign user roles
             userStatRolesRef.AssignRoles(guildRef);
 
+            //get all users currently in chat and put their id's in userInChat list
+            //go through userInChat list and call startRecord()
+
+            GetUsersInChat(out usersInChat);
+
+            foreach (SocketUser user in usersInChat)
+            {
+                if (!(guildUserIDToStatIndex.ContainsKey(user.Id)))
+                {
+                    AddNewUserToStatBotIndex(user);
+                }
+
+                StartRecordingVCTime(user);
+            }
+
             SaveAllBotInfo();
 
             /*SocketGuildUser user;
@@ -193,13 +217,38 @@ namespace DiscordUserStatsBot
             Console.WriteLine("Bot set up");
         }
 
+        private Task Disconnect(Exception exception) //what about crashes???
+        {
+            //go through users in chat list and call stopRecord()
+            for (int userIndex = usersInChat.Count - 1; userIndex >= 0; userIndex--)
+            {
+                StopRecordingVCTime(usersInChat[userIndex]);
+            }
+
+            Console.WriteLine($@"There are {usersInChat.Count} users in chat.");
+
+            return Task.CompletedTask;
+        }
+
+        
+
         #endregion
 
         #region RecordStatsFunctions
         private Task VoiceChatChange(SocketUser user, SocketVoiceState PreviousVoiceChat, SocketVoiceState CurrentVoiceChat)
         {
             //return if not correct guild
-            if (!((PreviousVoiceChat.VoiceChannel).Guild.Id.Equals(guildRef.Id)))
+            if (PreviousVoiceChat.VoiceChannel != null && !((PreviousVoiceChat.VoiceChannel).Guild.Id.Equals(guildRef.Id)))
+            {
+                return Task.CompletedTask;
+            }
+            else if (CurrentVoiceChat.VoiceChannel != null && !((CurrentVoiceChat.VoiceChannel).Guild.Id.Equals(guildRef.Id)))
+            {
+                return Task.CompletedTask;
+            }
+
+            //track bot stats?
+            if (!trackBotStats && user.IsBot)
             {
                 return Task.CompletedTask;
             }
@@ -223,6 +272,12 @@ namespace DiscordUserStatsBot
             //Record the time the player entered chat in their assossiated userStat class
             tempUserStatsRef.RecordGuildUserEnterVoiceChatTime();
 
+            //if user not in userInChat list add them
+            if (!(usersInChat.Contains(user)))
+            {
+                usersInChat.Add(user);
+            }
+
             return Task.CompletedTask;
         }
 
@@ -231,6 +286,12 @@ namespace DiscordUserStatsBot
             UserStatTracker tempUserStatsRef = GetUserStats(GetUserNamePlusDiscrim((SocketGuildUser)user));
             tempUserStatsRef.RecordGuildUserLeaveVoiceChatTime();
             saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex), guildRef);
+
+            //if user in userInChat list remove them
+            if (usersInChat.Contains(user))
+            {
+                usersInChat.Remove(user);
+            }
 
             return Task.CompletedTask;
         }
@@ -241,6 +302,11 @@ namespace DiscordUserStatsBot
             if (commandHandlerRef.wasBotCommand)
             {
                 commandHandlerRef.wasBotCommand = false;
+                return Task.CompletedTask;
+            }
+            //track bot stats?
+            if (!trackBotStats && message.Author.IsBot)
+            {
                 return Task.CompletedTask;
             }
 
@@ -457,7 +523,7 @@ namespace DiscordUserStatsBot
                 }
                 else
                 {
-                    Console.WriteLine("The bot has no recording of a user with that name: id");
+                    Console.WriteLine($"Search for ID: The bot has no recording of a user with that name: {userName}");
                 }
             }
 
@@ -466,14 +532,54 @@ namespace DiscordUserStatsBot
 
         #endregion
 
-        #region TimerFunctions
-        public bool UserIsInChat(SocketUser userInQuestion)
+        private void GetUsersInChat(out List<SocketUser> usersInChatList)
         {
+
             //loop through active channels and users in them 
             //Note: contrary to the documentation guildRef.VoiceChannels only gets channels that are being actively used
             //Note: contrary to the documentation VoiceChannel.Users only gets users currently in that channel
 
+            usersInChatList = new List<SocketUser>();
+
+            //iterate through users in channels
             SocketVoiceChannel voiceChannel;
+            IEnumerator<SocketVoiceChannel> voiceChannelE = guildRef.VoiceChannels.GetEnumerator();
+
+            while (voiceChannelE.MoveNext())
+            {
+                voiceChannel = voiceChannelE.Current;
+
+                SocketUser userInVC;
+
+                IEnumerator<SocketUser> userInVC_E = voiceChannel.Users.GetEnumerator();
+
+                while (userInVC_E.MoveNext())
+                {
+                    userInVC = userInVC_E.Current;
+
+                    usersInChatList.Add(userInVC);
+                }
+            }
+
+            Console.WriteLine($@"There are {usersInChatList.Count} users in chat");
+        }
+
+        public bool UserIsInChat(SocketUser userInQuestion)
+        {
+            bool userInChat = false;
+
+            for (int index = 0; index < usersInChat.Count; index++)
+            {
+                if (usersInChat[index].Id.Equals(userInQuestion.Id)) 
+                {
+                    userInChat = true;
+                    index = usersInChat.Count;
+                }
+            }
+
+            return userInChat;
+
+            /*SocketVoiceChannel voiceChannel;
             IEnumerator<SocketVoiceChannel> voiceChannelE = guildRef.VoiceChannels.GetEnumerator();
 
             while (voiceChannelE.MoveNext())
@@ -498,11 +604,11 @@ namespace DiscordUserStatsBot
                     }
                 }
             }
-
+            */
             //Console.WriteLine("No matching user in chat");
-            return false;
         }
 
+        #region TimerFunctions
         private void AssignRolesTimer(TimeSpan timeTillNextAssignRoles)
         {
             assignRolesTimer = new System.Timers.Timer(timeTillNextAssignRoles.TotalMilliseconds);
@@ -591,8 +697,6 @@ namespace DiscordUserStatsBot
                 UserStatTracker.DefaultRankConfig();
             }
 
-            userStatRolesRef.LoadRankedUsers();
-
             //set up user dictionaries and load any info that already exists
             saveHandlerRef.LoadDictionary(out guildUserIDToStatIndex, nameof(guildUserIDToStatIndex), guildRef); //out keyword passes by reference instead of value
             saveHandlerRef.LoadDictionary(out guildUserNameToIDIndex, nameof(guildUserNameToIDIndex), guildRef);
@@ -607,6 +711,8 @@ namespace DiscordUserStatsBot
                 guildUserIDToStatIndex = new Dictionary<ulong, UserStatTracker>();
                 //Console.WriteLine("New dictionary to save IDs and UserStats made.");
             }
+
+            userStatRolesRef.LoadRankedUsers();
 
         }
 

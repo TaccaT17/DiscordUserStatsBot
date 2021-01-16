@@ -84,6 +84,32 @@ namespace DiscordUserStatsBot
                 }
             }
 
+            //ensure all recorded ids in rankedUsers list
+            foreach (KeyValuePair<ulong, UserStatTracker> item in myCont.guildUserIDToStatIndex)
+            {
+                if (!(rankedUsers.Contains(item.Key)))
+                {
+                    //if not in list add it
+                    rankedUsers.Add(item.Key);
+                }
+            }
+
+            //if rankedUsers has userID that statTracker doesn't delete it
+            for (int iD = rankedUsers.Count - 1; iD >= 0; iD--)
+            {
+                if (!(myCont.guildUserIDToStatIndex.ContainsKey(rankedUsers[iD])))
+                {
+                    //also remove any rank roles that user might have
+                    SocketGuildUser guildUser = guildRef.GetUser(rankedUsers[iD]);
+                    if(guildUser != null)
+                    {
+                        RemoveUsersRankRoles(guildRef, guildUser);
+                    }
+
+                    rankedUsers.RemoveAt(iD);
+                }
+            }
+
             RankUsers();
 
             //go through roleList and give each role appropriate users
@@ -148,26 +174,33 @@ namespace DiscordUserStatsBot
             //if there are more users to go through and delete any rankRoles they have
             for (; rankedUserIndex < rankedUsers.Count; rankedUserIndex++)       //iterate through rest of users
             {
-                SocketRole usersExistingRoles;
-                IEnumerator<SocketRole> userExistingRoleE = guildRef.GetUser(rankedUsers[rankedUserIndex]).Roles.GetEnumerator(); //Null reference here. Bot broke because user offline? Mobile
-                while (userExistingRoleE.MoveNext())            //iterate through users roles
-                {
-                    usersExistingRoles = userExistingRoleE.Current;
+                SocketGuildUser guildUser = guildRef.GetUser(rankedUsers[rankedUserIndex]);
 
-                    foreach(UserStatRole rankRole in rankRoles)     //iterate through rankRoles
-                    {
-                        if (usersExistingRoles.Id.Equals(rankRole.Id))
-                        {
-                            await guildRef.GetUser(rankedUsers[rankedUserIndex]).RemoveRoleAsync(guildRef.GetRole(rankRole.Id));
-                        }
-                    }
-                    
-                }
+                RemoveUsersRankRoles(guildRef, guildUser);
             }
 
             //save rankedUsers list
             SaveRankedUsers();
 
+        }
+
+        private async void RemoveUsersRankRoles(SocketGuild guildRef, SocketGuildUser guildUser)
+        {
+            SocketRole usersExistingRoles;
+            IEnumerator<SocketRole> userExistingRoleE = guildUser.Roles.GetEnumerator(); //Null reference here. Bot broke because user offline? Mobile
+            while (userExistingRoleE.MoveNext())            //iterate through users roles
+            {
+                usersExistingRoles = userExistingRoleE.Current;
+
+                foreach (UserStatRole rankRole in rankRoles)     //iterate through rankRoles
+                {
+                    if (usersExistingRoles.Id.Equals(rankRole.Id))
+                    {
+                        await guildUser.RemoveRoleAsync(guildRef.GetRole(rankRole.Id));
+                    }
+                }
+
+            }
         }
 
         /// <summary>
@@ -176,15 +209,7 @@ namespace DiscordUserStatsBot
         /// </summary>
         public void RankUsers()
         {
-            //ensure all recorded ids in rankedUsers list
-            foreach(KeyValuePair<ulong, UserStatTracker> item in myCont.guildUserIDToStatIndex)
-            {
-                if (!(rankedUsers.Contains(item.Key)))
-                {
-                    //if not in list add it
-                    rankedUsers.Add(item.Key);
-                }
-            }
+            
 
             //generate ordered list of userStatTrackers from ranked iD list. I use rankedID list for this because it should be already pretty close to being in the correct order.
             List<UserStatTracker> userStatTrackersList = new List<UserStatTracker>();
@@ -340,6 +365,14 @@ namespace DiscordUserStatsBot
         public void LoadRankedUsers()
         {
             myCont.saveHandlerRef.LoadObject(out rankedUsers, nameof(rankedUsers), myCont.GuildRef);
+            if(rankedUsers == null)
+            {
+                rankedUsers = new List<ulong>();
+                foreach (KeyValuePair<ulong, UserStatTracker> item in myCont.guildUserIDToStatIndex)
+                {
+                    rankedUsers.Add(item.Key);
+                }
+            }
         }
 
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
