@@ -18,6 +18,15 @@ namespace DiscordUserStatsBot
         private char botCommandPrefix = '!';
         private string ignoreAfterCommandString = "IACSn0ll";
 
+        public char BotCommandPrefix
+        {
+            get { return botCommandPrefix;  }
+            set
+            {
+                botCommandPrefix = value;
+            }
+        }
+
         //Commands
         private string greetCommand = "Hi",
             aboutCommand = "About",
@@ -112,7 +121,6 @@ namespace DiscordUserStatsBot
                 message.Channel.SendMessageAsync($"Type '{botCommandPrefix}help' for a list of bot commands.");
                 return Task.CompletedTask;
             }
-
             if (command.Equals(aboutCommand.ToLower()))
             {
                 message.Channel.SendMessageAsync("The goal of the StatTracker bot is to create a more organized sidebar so active users appear near the top. \n" +
@@ -123,7 +131,6 @@ namespace DiscordUserStatsBot
                                                  $"Type '{botCommandPrefix}{helpCommand}' for a list of bot commands.");
                 return Task.CompletedTask;
             }
-
             else if (command.Equals(helpCommand.ToLower()))
             {
                 message.Channel.SendMessageAsync("**Commands**:\n" +
@@ -132,21 +139,20 @@ namespace DiscordUserStatsBot
                     "- **" + greetCommand + "**" + " : the bot greets you.\n" +
                     "- **" + aboutCommand + "**" + " : about this bot.\n" +
                     "- **" + helpCommand + "**" + " : a list of bot commands.\n" +
-                    "- **" + prefixCommand + "**" + " *(<newPrefix>)* : get the botPrefix OR (optional) change it.\n" +
+                    "- **" + prefixCommand + "**" + " *(<newPrefix>)* : get the botPrefix OR (optional) change it. *Admin only*\n" +
                     "--------------------------------------------------------\n" +
                     "- **" + botInfoCommand + "**" + " : gives relevant bot configuration information.\n" +
                     "- **" + getUserStatsCommand + "**" + " *<username(#0000)>* : get a given user's rank and  stats.\n" +
                     "--------------------------------------------------------\n" +
                     "- **" + updateRanksCommand + "**" + " : recalculates everyones rank.\n" +
-                    "- **" + setRankTimeIntervalCommand + "**" + " *<hours>* : change time interval between when users ranks are calculated. *By default is 1 hour*. This command resets the timer. \n" +
-                    "- **" + setRankMemberLimitCommand + "**" + " *<RankRole>, <Amount>* : changes the number of users in a RankRole to the given Amount.\n" +
-                    "- **" + changeRankCriteria + "**" + " *<criteria>* : sets what criteria people are ranked by. \n" +
+                    "- **" + setRankTimeIntervalCommand + "**" + " *<hours>* : change time interval between when users ranks are calculated. *By default is 1 hour*. This command resets the timer. *Admin only*\n" +
+                    "- **" + setRankMemberLimitCommand + "**" + " *<RankRole>, <Amount>* : changes the number of users in a RankRole to the given Amount. *Admin only*\n" +
+                    "- **" + changeRankCriteria + "**" + " *<criteria>* : sets what criteria people are ranked by. *Admin only*\n" +
                     "                     Criteria can be: messages(*Msg*), voice chat(*Vc*) or both(*Msg&Vc*). average (*Avg*) or totals(*Total*). month(*Month*), week(*Week*), or day(*Day*).\n" +
                     "");
 
                 return Task.CompletedTask;
             }
-
             else if (command.Equals(botInfoCommand.ToLower()))
             {
                 string roleNames = "";
@@ -209,92 +215,11 @@ namespace DiscordUserStatsBot
             //COMMANDS INVOLVING AFTER-COMMAND STRING HERE
             //------------------------------------------
             string stringAfterCommand = GetStringAfterCommand(message, lengthOfCommand).Result;
-            //PREFIX
-            if (command.Equals(prefixCommand.ToLower()))
+
+            if (command.Equals(updateRanksCommand.ToLower()))
             {
-
-                Console.WriteLine("Prefix command called");
-                //if nothing after prefix then print out prefix otherwise set the prefix to 1st character after space
-                if (stringAfterCommand.Equals(ignoreAfterCommandString))
-                {
-                    message.Channel.SendMessageAsync($@"The command prefix for UserStat bot is {botCommandPrefix}");
-                    Console.WriteLine("Told user prefix");
-                }
-                else
-                {
-                    ChangePrefixCommand(message, stringAfterCommand);
-                    Console.WriteLine("Set new prefix");
-                }
-
-                return Task.CompletedTask;
-            }
-            else if (command.Equals(setRankTimeIntervalCommand.ToLower()))
-            {
-                float hours;
-                if (!(float.TryParse(stringAfterCommand, out hours)))       //TryParse returns false if not an int
-                {
-                    message.Channel.SendMessageAsync($@"Sorry, but '{stringAfterCommand}' is not a number.");
-                    return Task.CompletedTask;
-                }
-                else
-                {
-                    TimeSpan tP = TimeSpan.FromHours(hours);
-                    myCont.ChangeAssignRolesInterval(tP);
-                }
-
-                return Task.CompletedTask;
-            }
-            else if (command.Equals(changeRankCriteria.ToLower()))
-            {
-
-                if (stringAfterCommand.ToLower().Equals("Msg".ToLower()))
-                {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.messages, myCont);
-                }
-                else if (stringAfterCommand.ToLower().Equals("Vc".ToLower()))
-                {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.voiceChatTime, myCont);
-                }
-                else if (stringAfterCommand.ToLower().Equals("Msg&Vc".ToLower()))
-                {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.msgAndVCT, myCont);
-                }
-                else if (stringAfterCommand.ToLower().Equals("Avg".ToLower()))
-                {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankByType.average, myCont);
-                }
-                else if (stringAfterCommand.ToLower().Equals("Total".ToLower()))
-                {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankByType.total, myCont);
-                }
-                else if (stringAfterCommand.ToLower().Equals("Month".ToLower()))
-                {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.month, myCont);
-                }
-                else if (stringAfterCommand.ToLower().Equals("Week".ToLower()))
-                {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.week, myCont);
-                }
-                else if (stringAfterCommand.ToLower().Equals("Day".ToLower()))
-                {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.day, myCont);
-                }
-                else
-                {
-                    message.Channel.SendMessageAsync($@"Sorry, that was an invalid command. Not sure which one of us is the idiot.");
-                }
-                //update ranks to reflect changed rank criteria
                 myCont.userStatRolesRef.AssignRoles(guildRef);
-
-                return Task.CompletedTask;
-            }
-            else if (command.Equals(updateRanksCommand.ToLower()))
-            {
-
-                myCont.userStatRolesRef.AssignRoles(guildRef);
-
                 message.AddReactionAsync(emoteClap);
-
             }
             else if (command.Equals(getUserStatsCommand.ToLower()))
             {
@@ -342,8 +267,114 @@ namespace DiscordUserStatsBot
                 }
 
             }
+
+            //COMMANDS THAT REQUIRE PERMISSIONS
+            //PREFIX
+            else if (command.Equals(prefixCommand.ToLower()))
+            {
+                if (!(((SocketGuildUser)(message.Author)).GuildPermissions.Administrator))
+                {
+                    message.Channel.SendMessageAsync($@"Sorry, you need the {GuildPermission.Administrator} permission to do this");
+                    return Task.CompletedTask;
+                }
+
+                //Console.WriteLine("Prefix command called");
+                //if nothing after prefix then print out prefix otherwise set the prefix to 1st character after space
+                if (stringAfterCommand.Equals(ignoreAfterCommandString))
+                {
+                    message.Channel.SendMessageAsync($@"The command prefix for UserStat bot is {botCommandPrefix}");
+                }
+                else
+                {
+                    ChangePrefixCommand(message, stringAfterCommand);
+                    Console.WriteLine("Set new prefix");
+                    myCont.saveHandlerRef.SaveObject(botCommandPrefix, nameof(CommandHandler.BotCommandPrefix), guildRef);
+                }
+
+                return Task.CompletedTask;
+            }
+            else if (command.Equals(setRankTimeIntervalCommand.ToLower()))
+            {
+                if (!(((SocketGuildUser)(message.Author)).GuildPermissions.Administrator))
+                {
+                    message.Channel.SendMessageAsync($@"Sorry, you need the {GuildPermission.Administrator} permission to do this");
+                    return Task.CompletedTask;
+                }
+
+                float hours;
+                if (!(float.TryParse(stringAfterCommand, out hours)))       //TryParse returns false if not an int
+                {
+                    message.Channel.SendMessageAsync($@"Sorry, but '{stringAfterCommand}' is not a number.");
+                    return Task.CompletedTask;
+                }
+                else
+                {
+                    TimeSpan tP = TimeSpan.FromHours(hours);
+                    myCont.ChangeAssignRolesInterval(tP);
+                    message.AddReactionAsync(emoteClap);
+                }
+
+                return Task.CompletedTask;
+            }
+            else if (command.Equals(changeRankCriteria.ToLower()))
+            {
+                if (!(((SocketGuildUser)(message.Author)).GuildPermissions.Administrator))
+                {
+                    message.Channel.SendMessageAsync($@"Sorry, you need the {GuildPermission.Administrator} permission to do this");
+                    return Task.CompletedTask;
+                }
+
+                if (stringAfterCommand.ToLower().Equals("Msg".ToLower()))
+                {
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.messages, myCont);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Vc".ToLower()))
+                {
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.voiceChatTime, myCont);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Msg&Vc".ToLower()))
+                {
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.msgAndVCT, myCont);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Avg".ToLower()))
+                {
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankByType.average, myCont);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Total".ToLower()))
+                {
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankByType.total, myCont);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Month".ToLower()))
+                {
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.month, myCont);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Week".ToLower()))
+                {
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.week, myCont);
+                }
+                else if (stringAfterCommand.ToLower().Equals("Day".ToLower()))
+                {
+                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.day, myCont);
+                }
+                else
+                {
+                    message.Channel.SendMessageAsync($@"Sorry, that was an invalid command. Not sure which one of us is the idiot.");
+                    return Task.CompletedTask;
+                }
+                //update ranks to reflect changed rank criteria
+                myCont.userStatRolesRef.AssignRoles(guildRef);
+
+                message.AddReactionAsync(emoteClap);
+
+                return Task.CompletedTask;
+            }
             else if (command.Equals(setRankMemberLimitCommand.ToLower()))
             {
+                if (!(((SocketGuildUser)(message.Author)).GuildPermissions.Administrator))
+                {
+                    message.Channel.SendMessageAsync($@"Sorry, you need the {GuildPermission.Administrator} permission to do this");
+                    return Task.CompletedTask;
+                }
 
                 if (!(stringAfterCommand.Contains(',')))
                 {
@@ -403,26 +434,15 @@ namespace DiscordUserStatsBot
             //only users who have manage guild permission can change the prefix
 
             //need to cast user to get var that tells me whether user can manage guild
-            SocketGuildUser userGuild = (SocketGuildUser)(message.Author);
-
-            if (userGuild.GuildPermissions.ManageGuild)
+            botCommandPrefix = stringAfterCommand[0];
+            if (stringAfterCommand.Length > 1)
             {
-                botCommandPrefix = stringAfterCommand[0];
-                if (stringAfterCommand.Length > 1)
-                {
-                    message.Channel.SendMessageAsync($@"The command prefix for UserStat bot has been set to the first character typed {botCommandPrefix}");
-                }
-                else
-                {
-                    message.Channel.SendMessageAsync($@"The command prefix for UserStat bot has been set to {botCommandPrefix}");
-                }
-
+                message.Channel.SendMessageAsync($@"The command prefix for UserStat bot has been set to the first character typed {botCommandPrefix}");
             }
             else
             {
-                message.Channel.SendMessageAsync($@"Sorry, you need the Manage Guild permission in order to do this");
+                message.AddReactionAsync(emoteClap);
             }
-
             return Task.CompletedTask;
         }
 

@@ -714,6 +714,15 @@ namespace DiscordUserStatsBot
 
             userStatRolesRef.LoadRankedUsers();
 
+            //load prefix
+            char savedBCP;
+            saveHandlerRef.LoadObject(out savedBCP, nameof(CommandHandler.BotCommandPrefix), guildRef);
+            if (savedBCP.Equals(default))
+            {
+                savedBCP = '!';
+            }
+            commandHandlerRef.BotCommandPrefix = savedBCP;
+
         }
 
         /// <summary>
