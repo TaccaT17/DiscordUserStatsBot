@@ -31,7 +31,9 @@ namespace DiscordUserStatsBot
 
             //discord people/bots/objects have a "token" AKA ID that is a password/username
             // not secure to hardcode token so instead will get it from saved file (under TomsDiscordBot->bin->Debug->netcoreapp3.1)
-            var token = File.ReadAllText("token.txt");
+            string filePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            Console.WriteLine("token path: " + filePath);
+            var token = File.ReadAllText(filePath + @"\token.txt");
 
             await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();
