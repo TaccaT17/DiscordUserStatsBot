@@ -13,6 +13,8 @@ namespace DiscordUserStatsBot
 
     class MainClass
     {
+
+        private string filePath;
         private DiscordSocketClient client; //         <--------------------------------THIS IS YOUR REFERENCE TO EVERYTHING
 
         public static void Main(string[] args)
@@ -23,6 +25,8 @@ namespace DiscordUserStatsBot
             DiscordSocketConfig config = new DiscordSocketConfig();
             config.AlwaysDownloadUsers = true;
 
+            filePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+
             client = new DiscordSocketClient(config);
 
             client.Log += Log;
@@ -31,8 +35,8 @@ namespace DiscordUserStatsBot
 
             //discord people/bots/objects have a "token" AKA ID that is a password/username
             // not secure to hardcode token so instead will get it from saved file (under TomsDiscordBot->bin->Debug->netcoreapp3.1)
-            string filePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             Console.WriteLine("token path: " + filePath);
+
             var token = File.ReadAllText(filePath + @"\token.txt");
 
             await client.LoginAsync(TokenType.Bot, token);
@@ -44,6 +48,12 @@ namespace DiscordUserStatsBot
 
         private Task Log(LogMessage msg)
         {
+            using (System.IO.StreamWriter file =
+            new System.IO.StreamWriter(filePath + @"\logs.txt", true))
+            {
+                file.WriteLine(msg.ToString());
+            }
+
             Console.WriteLine(msg.ToString());
             return Task.CompletedTask;
         }

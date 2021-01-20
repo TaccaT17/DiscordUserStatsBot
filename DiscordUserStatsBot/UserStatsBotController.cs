@@ -20,11 +20,11 @@ using System.Timers;
 //Debugging Issues:
 
 ///Completed
-///Fixed voice recording null errors
-///merged userstat commands into one
-///added list that keeps track of users in chat - bot starts/stops recording their stats appropriately
-///fixed so bot messages/vc not recorded based off of bool
-///fixed so if rankedRoles discrepancy bot still works
+///Added clap reaction to changing member limit
+///can now have "0" members in a role
+///Now says "1st, 2nd, 3rd"
+///Added message logging to file
+///Made instructions/about look pretty
 
 ///FUTURE TASKS:
 ///Make it get the guild it's a part of on start up AKA make it so it deals with multiple guilds at once
