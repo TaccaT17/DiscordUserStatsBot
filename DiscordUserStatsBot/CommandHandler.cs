@@ -261,6 +261,7 @@ namespace DiscordUserStatsBot
 
             if (command.Equals(updateRanksCommand.ToLower()))
             {
+                Console.Write("Manually ");
                 myCont.userStatRolesRef.AssignRoles(guildRef);
                 message.AddReactionAsync(emoteClap);
             }
@@ -417,7 +418,8 @@ namespace DiscordUserStatsBot
                     message.Channel.SendMessageAsync($@"Sorry, that was an invalid command. Not sure which one of us is the idiot.");
                     return Task.CompletedTask;
                 }
-                //update ranks to reflect changed rank criteria
+                //update ranks to reflect changed rank criteria\
+                Console.Write("Changed rank criteria so ");
                 myCont.userStatRolesRef.AssignRoles(guildRef);
 
                 message.AddReactionAsync(emoteClap);
@@ -474,6 +476,7 @@ namespace DiscordUserStatsBot
                 }
 
                 //update roles
+                Console.Write("Changed number of users in a role so ");
                 myCont.userStatRolesRef.AssignRoles(guildRef);
                 //save roles
                 myCont.userStatRolesRef.SaveRankRoles(guildRef, myCont.saveHandlerRef);

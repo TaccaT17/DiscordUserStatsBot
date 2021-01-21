@@ -20,11 +20,7 @@ using System.Timers;
 //Debugging Issues:
 
 ///Completed
-///Added clap reaction to changing member limit
-///can now have "0" members in a role
-///Now says "1st, 2nd, 3rd"
-///Added message logging to file
-///Made instructions/about look pretty
+///
 
 ///FUTURE TASKS:
 ///Make it get the guild it's a part of on start up AKA make it so it deals with multiple guilds at once
@@ -225,7 +221,7 @@ namespace DiscordUserStatsBot
                 StopRecordingVCTime(usersInChat[userIndex]);
             }
 
-            Console.WriteLine($@"There are {usersInChat.Count} users in chat.");
+            Console.WriteLine($@"There are {usersInChat.Count} users in chat for {guildRef.Name}");
 
             return Task.CompletedTask;
         }
@@ -621,6 +617,7 @@ namespace DiscordUserStatsBot
 
         private void AssignRolesTimerCallback(Object source, ElapsedEventArgs e)
         {
+            Console.Write("Timer ended so ");
             userStatRolesRef.AssignRoles(guildRef);
         }
 
@@ -628,6 +625,7 @@ namespace DiscordUserStatsBot
         {
             assignRolesTimeSpan = interval;
             assignRolesTimer.Interval = interval.TotalMilliseconds;
+            Console.Write("Changed time interval so ");
             userStatRolesRef.AssignRoles(guildRef);
             assignRolesStartTime = DateTime.Now;
             //save assignRolesTimer

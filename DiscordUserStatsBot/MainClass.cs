@@ -16,19 +16,27 @@ namespace DiscordUserStatsBot
 
         private string filePath;
         private DiscordSocketClient client; //         <--------------------------------THIS IS YOUR REFERENCE TO EVERYTHING
+        private bool guildInstancesInitialized;
 
         public static void Main(string[] args)
         => new MainClass().MainAsync().GetAwaiter().GetResult();
 
         public async Task MainAsync()
         {
+            Console.WriteLine("Main called.");
+
+            guildInstancesInitialized = false;
+
             DiscordSocketConfig config = new DiscordSocketConfig();
             config.AlwaysDownloadUsers = true;
 
             filePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-
-            client = new DiscordSocketClient(config);
-
+            if(client == null)
+            {
+                Console.WriteLine("Client null, making new client");
+                client = new DiscordSocketClient(config);
+            }
+            
             client.Log += Log;
 
             client.Ready += BootUpBot; //Ready is fired when the bot comes online and is connected to discord
@@ -60,14 +68,21 @@ namespace DiscordUserStatsBot
 
         private Task BootUpBot()
         {
-            //for each guild create controller
-            SocketGuild guild;
-            IEnumerator<SocketGuild> guildE = client.Guilds.GetEnumerator();
-            while (guildE.MoveNext())
+            if (!guildInstancesInitialized)
             {
-                guild = guildE.Current;
+                Console.WriteLine("     Creating guild instances.");
 
-                UserStatsBotController tempControllerRef = new UserStatsBotController(client, guild);
+                //for each guild create controller
+                SocketGuild guild;
+                IEnumerator<SocketGuild> guildE = client.Guilds.GetEnumerator();
+                while (guildE.MoveNext())
+                {
+                    guild = guildE.Current;
+
+                    UserStatsBotController tempControllerRef = new UserStatsBotController(client, guild);
+                }
+
+                guildInstancesInitialized = true;
             }
 
             return Task.CompletedTask;

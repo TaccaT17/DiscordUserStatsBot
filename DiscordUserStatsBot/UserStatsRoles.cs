@@ -69,7 +69,7 @@ namespace DiscordUserStatsBot
         /// <param name="guildRef"></param>
         public async void AssignRoles(SocketGuild guildRef)
         {
-            Console.WriteLine("Assign Roles Start");
+            Console.WriteLine("Assigning Roles");
 
             //check to make sure have all roles
             CreateRoles(guildRef);
