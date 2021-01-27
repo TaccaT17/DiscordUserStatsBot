@@ -323,7 +323,7 @@ namespace DiscordUserStatsBot
                     //stats over the past **{rankTime} days**
                     message.Channel.SendMessageAsync($"__**{tempUserStat.UsersFullName}**__:\n" +
                                                      $"  - Rank: **{rank + 1}{postRank}**\n" +
-                                                     $"Stats over the past **{rankTime} days**...\n" +
+                                                     $"Stats calculated using the past **{rankTime} days**...\n" +
                                                      $"  - Total Meaningful Messages: **{totalMsgs}**\n" +
                                                      $"  - Total Chattime: **{totalVCTime.Days} days, " +
                                                                             $"{totalVCTime.Hours} hours, " +
