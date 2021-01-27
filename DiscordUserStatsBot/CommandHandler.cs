@@ -312,13 +312,28 @@ namespace DiscordUserStatsBot
                         postRank = "rd";
                     }
 
+                    int rankTime = tempUserStat.DetermineDays((int)UserStatTracker.rankConfig.rankTime);
+
+                    int totalMsgs = tempUserStat.TotalMessages(rankTime);
+                    TimeSpan totalVCTime = tempUserStat.TotalChatTime(rankTime);
+                    float avgMsgs = tempUserStat.AverageMessages(rankTime);
+                    TimeSpan avgVCTime = tempUserStat.AverageChatTime(rankTime);
+
+
+                    //stats over the past **{rankTime} days**
                     message.Channel.SendMessageAsync($"__**{tempUserStat.UsersFullName}**__:\n" +
                                                      $"  - Rank: **{rank + 1}{postRank}**\n" +
-                                                     $"  - Total Meaningful Messages: **{tempUserStat.TotalMessagesSent}**\n" +
-                                                     $"  - Total Chattime: **{tempUserStat.TotalVoiceChatTime.Days} days, " +
-                                                                            $"{tempUserStat.TotalVoiceChatTime.Hours} hours, " +
-                                                                            $"{tempUserStat.TotalVoiceChatTime.Minutes} minutes and " +
-                                                                            $"{tempUserStat.TotalVoiceChatTime.Seconds} seconds!**");
+                                                     $"Stats over the past **{rankTime} days**...\n" +
+                                                     $"  - Total Meaningful Messages: **{totalMsgs}**\n" +
+                                                     $"  - Total Chattime: **{totalVCTime.Days} days, " +
+                                                                            $"{totalVCTime.Hours} hours, " +
+                                                                            $"{totalVCTime.Minutes} minutes and " +
+                                                                            $"{totalVCTime.Seconds} seconds!**" +
+                                                     $"  - Average Meaningful Messages: **{avgMsgs}**\n" +
+                                                     $"  - Average Chattime: **{avgVCTime.Days} days, " +
+                                                                            $"{avgVCTime.Hours} hours, " +
+                                                                            $"{avgVCTime.Minutes} minutes and " +
+                                                                            $"{avgVCTime.Seconds} seconds!**");
 
 
                 }
