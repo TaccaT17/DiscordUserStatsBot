@@ -112,7 +112,7 @@ namespace DiscordUserStatsBot
             rankConfig.rankType = RankConfig.RankType.msgAndVCT;
             rankConfig.rankBy = RankConfig.RankByType.average;
             rankConfig.rankTime = RankConfig.RankTimeType.month;
-            rankConfig.minAvgDays = 5;
+            rankConfig.minAvgDays = ((int)rankConfig.rankTime/2);
             rankConfig.initialized = true;
             Console.WriteLine($@"rankConfig initialized");
         }
@@ -377,6 +377,7 @@ namespace DiscordUserStatsBot
         {
             rankConfig.rankTime = newRankTimeType;
             contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig), contRef.GuildRef);
+            rankConfig.minAvgDays = (int)rankConfig.rankTime / 2;
         }
         #endregion
 
