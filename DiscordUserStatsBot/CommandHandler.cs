@@ -32,7 +32,8 @@ namespace DiscordUserStatsBot
             aboutCommand = "About",
             helpCommand = "Help",
             prefixCommand = "StatPrefix",
-            getUserStatsCommand = "UserInfo",
+            getUserStatsCommand = "UserStats",
+            getRankStatsCommand = "RankStats",
             setRankTimeIntervalCommand = "SetRankTimeInterval",
             setRankMemberLimitCommand = "SetRankMemberLimit",
             changeRankCriteria = "RankBy",
@@ -165,6 +166,7 @@ namespace DiscordUserStatsBot
                 }
                 builder.AddField(botCommandPrefix + botInfoCommand, @"Gives relevant bot configuration information.");
                 builder.AddField(botCommandPrefix + getUserStatsCommand + " *<username(#0000)>*", "Get a given user's rank and stats.");
+                builder.AddField(botCommandPrefix + getRankStatsCommand + " *<RankRole>*", "Get a given RankRole's stats.");
                 builder.AddField(botCommandPrefix + updateRanksCommand, "Recalculates everyones rank.");
                 if (((SocketGuildUser)(message.Author)).GuildPermissions.Administrator)
                 {
@@ -319,16 +321,14 @@ namespace DiscordUserStatsBot
                     float avgMsgs = tempUserStat.AverageMessages(rankTime);
                     TimeSpan avgVCTime = tempUserStat.AverageChatTime(rankTime);
 
-
-                    //stats over the past **{rankTime} days**
-                    message.Channel.SendMessageAsync($"__**{tempUserStat.UsersFullName}**__:\n" +
+                    message.Channel.SendMessageAsync($"__**{tempUserStat.UsersFullName} Stats**__:\n" +
                                                      $"  - Rank: **{rank + 1}{postRank}**\n" +
                                                      $"Stats calculated using the past **{rankTime} days**...\n" +
                                                      $"  - Total Meaningful Messages: **{totalMsgs}**\n" +
                                                      $"  - Total Chattime: **{totalVCTime.Days} days, " +
                                                                             $"{totalVCTime.Hours} hours, " +
                                                                             $"{totalVCTime.Minutes} minutes and " +
-                                                                            $"{totalVCTime.Seconds} seconds!**" +
+                                                                            $"{totalVCTime.Seconds} seconds!**\n" +
                                                      $"  - Average Meaningful Messages: **{avgMsgs}**\n" +
                                                      $"  - Average Chattime: **{avgVCTime.Days} days, " +
                                                                             $"{avgVCTime.Hours} hours, " +
@@ -338,6 +338,80 @@ namespace DiscordUserStatsBot
 
                 }
 
+            }
+            else if (command.Equals(getRankStatsCommand.ToLower()))
+            {
+                string roleName = stringAfterCommand.Trim();
+
+                UserStatTracker tempStatTracker;
+                
+                List<float> messageAvgs = new List<float>();
+                int messageTotal = 0;
+                List<TimeSpan> VCAvgs = new List<TimeSpan>();
+                TimeSpan VCTotal = TimeSpan.Zero;
+                int daysCalculatedOver = 0;
+                int amountOfRankMembers = 0;
+
+                //find role
+                for (int index = 0; index < myCont.userStatRolesRef.rankRoles.Length; index++)
+                {
+                    if (myCont.userStatRolesRef.rankRoles[index].name.ToLower().Equals(roleName.ToLower()))
+                    {
+                        roleName = myCont.userStatRolesRef.rankRoles[index].name;
+
+                        //get all the members in that role
+                        List<SocketGuildUser> userList = myCont.userStatRolesRef.GetAllUsersInRank(myCont.userStatRolesRef.rankRoles[index], guildRef);
+
+                        amountOfRankMembers = userList.Count;
+
+                        //for each member in that role get their averages/totals
+                        foreach (SocketGuildUser guildUser in userList)
+                        {
+                            tempStatTracker = myCont.GetUserStats(myCont.GetUserNamePlusDiscrim(guildUser));
+
+                            if(tempStatTracker == null)
+                            {
+                                Console.WriteLine($"Error: No info on {roleName} member '{myCont.GetUserNamePlusDiscrim(guildUser)}'");
+                            }
+                            else
+                            {
+                                int tempDays = tempStatTracker.DetermineDays((int)UserStatTracker.rankConfig.rankTime);
+                                if(daysCalculatedOver < tempDays)
+                                {
+                                    daysCalculatedOver = tempDays;
+                                }
+
+                                messageAvgs.Add(tempStatTracker.AverageMessages(tempDays));
+                                messageTotal += tempStatTracker.TotalMessages(tempDays);
+                                VCAvgs.Add(tempStatTracker.AverageChatTime(tempDays));
+                                VCTotal += tempStatTracker.TotalChatTime(tempDays);
+                            }
+
+                            
+                        }
+
+                        //end loop because you found the role
+                        index = myCont.userStatRolesRef.rankRoles.Length;
+                    }
+                }
+
+                //TODO: error code if doesnt find any role with given name
+
+                TimeSpan VCAvg = Average(VCAvgs);
+
+                message.Channel.SendMessageAsync($"__**{roleName} Stats**__:\n" +
+                                                     $"  - Number of Members: **{amountOfRankMembers}**\n" +
+                                                     $"Stats calculated using the past **{daysCalculatedOver} days**...\n" +
+                                                     $"  - Total Meaningful Messages: **{messageTotal}**\n" +
+                                                     $"  - Total Chattime: **{VCTotal.Days} days, " +
+                                                                            $"{VCTotal.Hours} hours, " +
+                                                                            $"{VCTotal.Minutes} minutes and " +
+                                                                            $"{VCTotal.Seconds} seconds!**\n" +
+                                                     $"  - Average Meaningful Messages: **{Average(messageAvgs)}**\n" +
+                                                     $"  - Average Chattime: **{VCAvg.Days} days, " +
+                                                                            $"{VCAvg.Hours} hours, " +
+                                                                            $"{VCAvg.Minutes} minutes and " +
+                                                                            $"{VCAvg.Seconds} seconds!**");
             }
 
             //COMMANDS THAT REQUIRE PERMISSIONS
@@ -556,6 +630,44 @@ namespace DiscordUserStatsBot
                 //Console.WriteLine("Invalid string. Cannot convert to a username");
             }
             return Task<string>.FromResult(fullUserName);
+        }
+
+        public float Average(List<float> list)
+        {
+            float average = default;
+
+            if (list.Count == 0)
+            {
+                return average;
+            }
+
+            foreach (float item in list)
+            {
+                average = average + item;
+            }
+
+            average = average / (float)list.Count;
+
+            return average;
+        }
+
+        public TimeSpan Average(List<TimeSpan> list)
+        {
+            TimeSpan average = default;
+
+            if (list.Count == 0)
+            {
+                return average;
+            }
+
+            foreach (TimeSpan item in list)
+            {
+                average = average + item;
+            }
+
+            average = average / (float)list.Count;
+
+            return average;
         }
 
         #endregion

@@ -311,6 +311,32 @@ namespace DiscordUserStatsBot
             return rank;
         }
 
+        public List<SocketGuildUser> GetAllUsersInRank(UserStatRole rankRole, SocketGuild guildRef)
+        {
+            List<SocketGuildUser> userList = new List<SocketGuildUser>();
+
+            if (guildRef.GetRole(rankRole.Id) == null)
+            {
+                Console.WriteLine("Error: No role in the guild with that ID.");
+                return null;
+            }
+
+            SocketGuildUser guildUser;
+            IEnumerator<SocketGuildUser> guildUserE = guildRef.GetRole(rankRole.Id).Members.GetEnumerator();
+
+            while (guildUserE.MoveNext())
+            {
+                guildUser = guildUserE.Current;
+
+                userList.Add(guildUser);
+            }
+
+            return userList;
+
+        }
+
+        #region SAVE/LOADING
+
         /// <summary>
         /// Ensures UserStat roles are in line with Discord roles and then saves them
         /// </summary>
@@ -375,6 +401,7 @@ namespace DiscordUserStatsBot
             }
         }
 
+        #endregion
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion
         public struct UserStatRole

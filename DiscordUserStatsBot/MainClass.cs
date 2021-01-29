@@ -23,7 +23,7 @@ namespace DiscordUserStatsBot
 
         public async Task MainAsync()
         {
-            Console.WriteLine("Main called.");
+            //Console.WriteLine("Main called.");
 
             guildInstancesInitialized = false;
 

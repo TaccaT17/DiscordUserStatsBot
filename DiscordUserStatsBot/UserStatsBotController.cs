@@ -17,7 +17,7 @@ using System.Timers;
 
 //CURRENT TASK: 
 
-//Debugging Issues:
+//Debugging Issues: The Average() for TimeSpan is inaccurate???
 
 ///Completed
 ///
@@ -25,22 +25,15 @@ using System.Timers;
 ///FUTURE TASKS:
 ///Make it get the guild it's a part of on start up AKA make it so it deals with multiple guilds at once
 ///get specific day of week/month stats
-///change so takes username and then if there is more than one user with that name prompts you for a discriminator. Also deals with nicknames.
-///Allow people to also search for userstats with an ID
+///Nicknames?
 ///When user changes their name this bots connection to the guild doesn't realise this AKA I still get the old name if I ask it to print the SocketGuildUser name. Is fixed when I restart the Bot. Same thing occurs with nickname. If I think a user has changed their name reset connetion?
 ///Bug: when role re-created reference to color is lost
 ///Make it so that re-made roles are placed in correct spot
-///make it so that they can specify how many roles they want (3, 4, or 5)
 ///look up total/average voice chat time/messages for all users in a given role
-///look up average voice chat time/messages for specific user
-///allow admin to change number of max users per role.
 ///convert iDToUserStat into just a userStat list
 ///REWRITE EVERYTHING NOW THAT YOU CAN GET OFFLINE USERS
-///add admin limitations to commands
-///account for internet dropping out
 ///command that stops users from being organized in the sidebar by the rankRoles
 ///TODO: Compress GetUserStats and GetUserIDFromName
-///put all JSON save files into same folder
 ///Ensure that when any save file deleted bot can deal with it
 
 //on startup
@@ -120,8 +113,6 @@ namespace DiscordUserStatsBot
         #region FUNCTIONS
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #region InitFunctions
-        
-     
         public UserStatsBotController(DiscordSocketClient client, SocketGuild guild)
         {
             //EVENTS
@@ -225,9 +216,6 @@ namespace DiscordUserStatsBot
 
             return Task.CompletedTask;
         }
-
-        
-
         #endregion
 
         #region RecordStatsFunctions
@@ -644,7 +632,7 @@ namespace DiscordUserStatsBot
         #endregion
 
         #region MiscFunctions
-        private string GetUserNamePlusDiscrim(SocketGuildUser guildUser)
+        public string GetUserNamePlusDiscrim(SocketGuildUser guildUser)
         {
             return guildUser.Username + '#' + guildUser.Discriminator;
         }
