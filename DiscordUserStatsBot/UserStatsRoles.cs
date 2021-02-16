@@ -165,7 +165,7 @@ namespace DiscordUserStatsBot
                     }
                     else
                     {
-                        Console.WriteLine("User is inactive therefore not applying a role.");
+                        //Console.WriteLine("User is inactive therefore not applying a role.");
                         rankMemberAmountIteration--;
                     }
 
@@ -212,14 +212,22 @@ namespace DiscordUserStatsBot
         /// <returns></returns>
         private bool UserIsActive(ulong iD)
         {
-            UserStatTracker stats = myCont.GetUserStats(myCont.GuildRef.GetUser(iD).Username);
+            if (myCont.inactiveUsersLoseAllRoles)
+            {
+                UserStatTracker stats = myCont.GetUserStats(iD);
 
-            if(stats.TotalChatTime((int)UserStatTracker.rankConfig.rankTime) > TimeSpan.Zero || stats.TotalMessages((int)UserStatTracker.rankConfig.rankTime) > 0)
+                if (stats != null && (stats.TotalChatTime((int)UserStatTracker.rankConfig.rankTime) > TimeSpan.Zero || stats.TotalMessages((int)UserStatTracker.rankConfig.rankTime) > 0))
+                {
+                    return true;
+                }
+
+                return false;
+            }
+            else
             {
                 return true;
             }
-
-            return false;
+            
         }
 
         /// <summary>

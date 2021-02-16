@@ -96,6 +96,8 @@ namespace DiscordUserStatsBot
         //[Newtonsoft.Json.JsonProperty]
         //private UserStatTracker.RankConfig rankConfigSave;
 
+        public bool inactiveUsersLoseAllRoles = true;
+
         public SocketGuild GuildRef
         {
             get
@@ -418,7 +420,7 @@ namespace DiscordUserStatsBot
                 string foundUser = "";
 
 
-                //TODO: account for users who have changed their names
+                //TODO: account for users who have changed their names (need to update dictonaries)
                 //see if they just weren't capitalizing correctly or were excluding discriminator
                 foreach(KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
                 {
@@ -451,11 +453,21 @@ namespace DiscordUserStatsBot
                 }
                 else
                 {
-                    Console.WriteLine("The bot has no recording of a user with that name: userstat");
+                    Console.WriteLine($"The bot has no recording of a user with that name '{userName}': userstat");
                 }
             }
 
             return userStatInst;
+        }
+
+        /// <summary>
+        /// returns null if no user in the dictionary
+        /// </summary>
+        public UserStatTracker GetUserStats(ulong userID)
+        {
+            SocketGuildUser user = guildRef.GetUser(userID);
+
+            return GetUserStats(GetUserNamePlusDiscrim(user));
         }
 
         /// <summary>
