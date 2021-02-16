@@ -133,10 +133,6 @@ namespace DiscordUserStatsBot
             client.Disconnected += Disconnect;
             //-------------------------------------------------------------------------------------------------------------
 
-            //TODO:
-            //called when bot either joins guild, when bot comes online. 
-            //Will check to see if bot set up and up to date. If not will update.
-
             //get guild(AKA server)
             if (guildRef == null)
             {
@@ -421,6 +417,8 @@ namespace DiscordUserStatsBot
                 int usersWithName = 0;
                 string foundUser = "";
 
+
+                //TODO: account for users who have changed their names
                 //see if they just weren't capitalizing correctly or were excluding discriminator
                 foreach(KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
                 {
@@ -439,7 +437,7 @@ namespace DiscordUserStatsBot
 
                 if (usersWithName > 1)
                 {
-                    Console.WriteLine("Found multiple users with same name. : getuserstat");
+                    Console.WriteLine($"Found multiple users with same name '{foundUser}' : getuserstat");
                     return userStatInst;
                 }
                 else
@@ -493,7 +491,7 @@ namespace DiscordUserStatsBot
 
                 if (usersWithName > 1)
                 {
-                    //Console.WriteLine("Found multiple users with same name. : getuserstat");
+                    Console.WriteLine($"Found multiple entries with same id '{foundUser}' : ID");
                     return userID;
                 }
                 else
@@ -708,6 +706,8 @@ namespace DiscordUserStatsBot
                 savedBCP = '!';
             }
             commandHandlerRef.BotCommandPrefix = savedBCP;
+
+            //TODO: reset any user's lasttimein/out of vc time
 
         }
 

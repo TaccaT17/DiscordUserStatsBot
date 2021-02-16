@@ -22,9 +22,9 @@ namespace DiscordUserStatsBot
         public ulong usersID;
 
         [Newtonsoft.Json.JsonProperty]
-        private TimeSpan absoluteTotalVCTime;
+        private TimeSpan totalAllTimeVCTime;
         [Newtonsoft.Json.JsonProperty]
-        private int absoluteTotalMessagesSent;
+        private int totalAllTimeMessagesSent;
 
         [Newtonsoft.Json.JsonProperty]
         private TimeSpan totalVCTime;
@@ -76,8 +76,8 @@ namespace DiscordUserStatsBot
             usersID = userID;
 
             //set defaults to zero
-            absoluteTotalVCTime = TimeSpan.Zero;
-            absoluteTotalMessagesSent = 0;
+            totalAllTimeVCTime = TimeSpan.Zero;
+            totalAllTimeMessagesSent = 0;
 
             userStatsDays = new UserStatDay[30];
             //give each day a date
@@ -127,11 +127,11 @@ namespace DiscordUserStatsBot
         public void RecordGuildUserLeaveVoiceChatTime()
         {
             lastTimeLeftVC = DateTime.Now;
-            if (absoluteTotalVCTime == null)
+            if (totalAllTimeVCTime == null)
             {
-                absoluteTotalVCTime = new TimeSpan();
+                totalAllTimeVCTime = new TimeSpan();
             }
-            absoluteTotalVCTime += lastTimeLeftVC - lastTimeEnteredVC;
+            totalAllTimeVCTime += lastTimeLeftVC - lastTimeEnteredVC;
 
             userStatsDays[GetIndexOfDay(DateTime.Now)].vCTime += lastTimeLeftVC - lastTimeEnteredVC;
             //Console.WriteLine($"User left all chats at {lastTimeLeftVC.ToString()}");
@@ -141,7 +141,7 @@ namespace DiscordUserStatsBot
         {
             //Console.WriteLine($@"Recorded {myGuildUser} sent a Message");
 
-            absoluteTotalMessagesSent++;
+            totalAllTimeMessagesSent++;
 
             userStatsDays[GetIndexOfDay(DateTime.Now)].messagesSent++;
 
@@ -287,15 +287,10 @@ namespace DiscordUserStatsBot
                 Console.WriteLine($@"Beware: UserStat only records the past {userStatsDays.Length} days.");
                 pastNumberOfDays = userStatsDays.Length;
             }
-            //if # of days searching for exceeds # of days since this stat tracker got made, instead return average since stat tracker created
-            else if ((pastNumberOfDays > (DateTime.Now - dateTrackerCreated).Days))
+            //if # of days searching for exceeds # of days since this stat tracker got made, instead return total since stat tracker created
+            else if ((pastNumberOfDays > (DateTime.Now - dateTrackerCreated).Days) || pastNumberOfDays < 1)
             {
-                return absoluteTotalVCTime;
-            }
-            else if(pastNumberOfDays < 1)
-            {
-                //get total chattime instead
-                return absoluteTotalVCTime;
+                return totalAllTimeVCTime;
             }
 
             totalVCTime = TimeSpan.Zero;
@@ -320,15 +315,10 @@ namespace DiscordUserStatsBot
                 Console.WriteLine($@"Beware: UserStat only records the past {userStatsDays.Length} days.");
                 pastNumberOfDays = userStatsDays.Length;
             }
-            //if # of days searching for exceeds # of days since this stat tracker got made, instead return average since stat tracker created
-            else if ((pastNumberOfDays > (DateTime.Now - dateTrackerCreated).Days))
+            //if # of days searching for exceeds # of days since this stat tracker got made, instead return total since stat tracker created
+            else if ((pastNumberOfDays > (DateTime.Now - dateTrackerCreated).Days) || pastNumberOfDays < 1)
             {
-                return absoluteTotalMessagesSent;
-            }
-            else if (pastNumberOfDays < 1)
-            {
-                //get total chattime instead
-                return absoluteTotalMessagesSent;
+                return totalAllTimeMessagesSent;
             }
 
             totalMessagesSent = 0;
@@ -348,7 +338,7 @@ namespace DiscordUserStatsBot
             {
                 daysSinceTrackerCreated = 1;
             }
-            return absoluteTotalVCTime / (float)daysSinceTrackerCreated;
+            return totalAllTimeVCTime / (float)daysSinceTrackerCreated;
         }
         public float GetTotalAverageMessages()
         {
@@ -357,7 +347,7 @@ namespace DiscordUserStatsBot
             {
                 daysSinceTrackerCreated = 1;
             }
-            return absoluteTotalMessagesSent / (float)daysSinceTrackerCreated;
+            return totalAllTimeMessagesSent / (float)daysSinceTrackerCreated;
         }
         #endregion
 

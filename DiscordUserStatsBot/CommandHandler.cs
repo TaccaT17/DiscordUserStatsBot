@@ -9,6 +9,9 @@ namespace DiscordUserStatsBot
 {
     class CommandHandler
     {
+
+        #region VARIABLES
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         private UserStatsBotController myCont;
         private SocketGuild guildRef;
 
@@ -38,12 +41,18 @@ namespace DiscordUserStatsBot
             setRankMemberLimitCommand = "SetRankMemberLimit",
             changeRankCriteria = "RankBy",
             updateRanksCommand = "UpdateRanks", 
-            botInfoCommand = "BotInfo";
+            botInfoCommand = "BotInfo",
+            showRanksCommand = "ShowRanks";
+
+        int amountShowRanks = 10;
 
         //bool to stop commands for this bot from being recorded in UserStat
         public bool wasBotCommand;
 
         IEmote emoteClap;
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------------
+        #endregion
+
 
         //CONSTRUCTOR
         public CommandHandler(UserStatsBotController myController, SocketGuild guildReference)
@@ -55,6 +64,7 @@ namespace DiscordUserStatsBot
         }
 
         #region CommandFunctions
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         public Task CommandHandlerFunc(SocketMessage message)          //REMEMBER ALL COMMANDS MUST BE LOWERCASE
         {
             #region MessageFilter
@@ -167,6 +177,7 @@ namespace DiscordUserStatsBot
                 builder.AddField(botCommandPrefix + botInfoCommand, @"Gives relevant bot configuration information.");
                 builder.AddField(botCommandPrefix + getUserStatsCommand + " *<username(#0000)>*", "Get a given user's rank and stats.");
                 builder.AddField(botCommandPrefix + getRankStatsCommand + " *<RankRole>*", "Get a given RankRole's stats.");
+                builder.AddField(botCommandPrefix + showRanksCommand, "Get the top ranked users' and their stats.");
                 builder.AddField(botCommandPrefix + updateRanksCommand, "Recalculates everyones rank.");
                 if (((SocketGuildUser)(message.Author)).GuildPermissions.Administrator)
                 {
@@ -254,6 +265,46 @@ namespace DiscordUserStatsBot
 
                 return Task.CompletedTask;
             }
+            else if (command.Equals(showRanksCommand.ToLower()))
+            {
+                EmbedBuilder builder = new EmbedBuilder();
+
+                builder.WithTitle($"Top {amountShowRanks} Ranks:");
+
+                List<ulong> topUsers = myCont.userStatRolesRef.GetTopUsers(amountShowRanks);
+
+
+                UserStatTracker stats;
+                int rankTime;
+                float avgMsgs;
+                TimeSpan avgVCTime;
+
+                for (int rank = 0; rank < topUsers.Count; rank++)
+                {
+                    stats = myCont.GetUserStats(guildRef.GetUser(topUsers[rank]).Username);
+
+                    if(stats == null)
+                    {
+                        Console.WriteLine("Error: Top user not found on server.");
+                        builder.AddField($"Rank {rank} : UserNotFound", "Impacts users that have left the guild or have the same name as another guild member.");
+                        continue;
+                    }
+
+                    //TODO: if totals use those instead
+
+
+                    rankTime = stats.DetermineDays((int)UserStatTracker.rankConfig.rankTime);
+                    avgMsgs = stats.AverageMessages(rankTime);
+                    avgVCTime = stats.AverageChatTime(rankTime);
+
+                    builder.AddField($"Rank {rank} : {stats.UsersFullName}", $"Days calculated: {rankTime} \n Avg Msgs: {avgMsgs.ToString("0.00")} \n Avg VC: {avgVCTime}");
+                }
+
+                message.Channel.SendMessageAsync("", false, builder.Build());
+
+                return Task.CompletedTask;
+
+            }
 
             //------------------------------------------
 
@@ -264,6 +315,9 @@ namespace DiscordUserStatsBot
             if (command.Equals(updateRanksCommand.ToLower()))
             {
                 Console.Write("Manually ");
+
+                //TODO: update info of people currently in chat
+
                 myCont.userStatRolesRef.AssignRoles(guildRef);
                 message.AddReactionAsync(emoteClap);
             }
@@ -329,7 +383,7 @@ namespace DiscordUserStatsBot
                                                                             $"{totalVCTime.Hours} hours, " +
                                                                             $"{totalVCTime.Minutes} minutes and " +
                                                                             $"{totalVCTime.Seconds} seconds!**\n" +
-                                                     $"  - Average Meaningful Messages: **{avgMsgs}**\n" +
+                                                     $"  - Average Meaningful Messages: **{avgMsgs.ToString("0.00")}**\n" +
                                                      $"  - Average Chattime: **{avgVCTime.Days} days, " +
                                                                             $"{avgVCTime.Hours} hours, " +
                                                                             $"{avgVCTime.Minutes} minutes and " +
@@ -407,7 +461,7 @@ namespace DiscordUserStatsBot
                                                                             $"{VCTotal.Hours} hours, " +
                                                                             $"{VCTotal.Minutes} minutes and " +
                                                                             $"{VCTotal.Seconds} seconds!**\n" +
-                                                     $"  - Average Meaningful Messages: **{Average(messageAvgs)}**\n" +
+                                                     $"  - Average Meaningful Messages: **{Average(messageAvgs).ToString("0.00")}**\n" +
                                                      $"  - Average Chattime: **{VCAvg.Days} days, " +
                                                                             $"{VCAvg.Hours} hours, " +
                                                                             $"{VCAvg.Minutes} minutes and " +
@@ -549,6 +603,7 @@ namespace DiscordUserStatsBot
                 //if rolename is same as in rankRoles list...
                 for (int index = 0; index < myCont.userStatRolesRef.rankRoles.Length; index++)
                 {
+
                     if (myCont.userStatRolesRef.rankRoles[index].name.ToLower().Equals(roleName.ToLower()))
                     {
                         if(newMemberLimit < 0)
@@ -670,6 +725,7 @@ namespace DiscordUserStatsBot
             return average;
         }
 
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion
 
 

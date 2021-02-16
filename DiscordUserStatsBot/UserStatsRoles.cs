@@ -116,15 +116,9 @@ namespace DiscordUserStatsBot
             int rankedUserIndex = 0;
             for (int rankRole = 0; rankRole < rankRoles.Length; rankRole++)
             {
-                for (int index = 0; index < rankRoles[rankRole].memberLimit; index++)
+                for (int rankMemberAmountIteration = 0; rankMemberAmountIteration < rankRoles[rankRole].memberLimit; rankMemberAmountIteration++)
                 {
-                    if(rankedUsers.Count < 1)
-                    {
-                        //Console.WriteLine("No current users to assign roles to");
-                        return;
-                    }
-
-                    if(rankedUserIndex >= rankedUsers.Count)
+                    if(rankedUserIndex >= rankedUsers.Count || rankedUsers.Count < 1)
                     {
                         //Console.WriteLine("Ran out of users to assign roles to");
                         return;
@@ -132,20 +126,20 @@ namespace DiscordUserStatsBot
                     
                     //iterate though given users roles
                     SocketRole usersExistingRoles;
-                    IEnumerator<SocketRole> userExistingRoleE = guildRef.GetUser(rankedUsers[rankedUserIndex]).Roles.GetEnumerator(); //Null reference here. Bot broke because user offline? Mobile
-                    bool hasRole = false;
+                    IEnumerator<SocketRole> userExistingRoleE = guildRef.GetUser(rankedUsers[rankedUserIndex]).Roles.GetEnumerator();
+                    bool alreadyHasRole = false;
                     while (userExistingRoleE.MoveNext())
                     {
                         usersExistingRoles = userExistingRoleE.Current;
 
-                        //if user already has role you are good
-                        if (usersExistingRoles.Id.Equals(rankRoles[rankRole].Id))
+                        //if user already has role you are good and is active
+                        if (usersExistingRoles.Id.Equals(rankRoles[rankRole].Id) && UserIsActive(rankedUsers[rankedUserIndex]))
                         {
-                            hasRole = true;
+                            alreadyHasRole = true;
                             //Console.WriteLine($@"User already has appropriate role");
 
                         }
-                        //if the user has another ranked role remove that one
+                        //if the user has another ranked role or is inactive remove that role
                         //TODO: is iterationg more times than necessary
                         else
                         {
@@ -160,11 +154,19 @@ namespace DiscordUserStatsBot
                         }
                     }
 
-                    if (!hasRole)
+                    if (UserIsActive(rankedUsers[rankedUserIndex]))
                     {
-                        //if user doesnt have role assign it
-                        await guildRef.GetUser(rankedUsers[rankedUserIndex]).AddRoleAsync(guildRef.GetRole(rankRoles[rankRole].Id));
-                        //Console.WriteLine($@"Gave user appropriate rank role");
+                        if (!alreadyHasRole)
+                        {
+                            //if user doesnt have role assign it
+                            await guildRef.GetUser(rankedUsers[rankedUserIndex]).AddRoleAsync(guildRef.GetRole(rankRoles[rankRole].Id));
+                            //Console.WriteLine($@"Gave user appropriate rank role");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("User is inactive therefore not applying a role.");
+                        rankMemberAmountIteration--;
                     }
 
                     rankedUserIndex++;
@@ -204,6 +206,23 @@ namespace DiscordUserStatsBot
         }
 
         /// <summary>
+        /// returns true if user sent message or participated in voice chat in the past *rankTime* days
+        /// </summary>
+        /// <param name="iD"></param>
+        /// <returns></returns>
+        private bool UserIsActive(ulong iD)
+        {
+            UserStatTracker stats = myCont.GetUserStats(myCont.GuildRef.GetUser(iD).Username);
+
+            if(stats.TotalChatTime((int)UserStatTracker.rankConfig.rankTime) > TimeSpan.Zero || stats.TotalMessages((int)UserStatTracker.rankConfig.rankTime) > 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Reorders rankedUsers list so sorted highest -> lowest rank
         /// Can modify rank sorting options using static RankConfig struct in UserStatTracker
         /// </summary>
@@ -223,7 +242,6 @@ namespace DiscordUserStatsBot
             //if sorting by both messages and voice chat time
             if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.msgAndVCT))
             {
-
                 //create list that is ranked by messages
                 //create list that is ranked by vctime
                 List<UserStatTracker> sortedByMessages = new List<UserStatTracker>();
@@ -249,7 +267,6 @@ namespace DiscordUserStatsBot
 
                 UserStatTracker.rankConfig.rankType = UserStatTracker.RankConfig.RankType.msgAndVCT;
                 //now when userStatTrackerList sorts will have accurate data
-
             }
 
             //NOTE:
@@ -309,6 +326,18 @@ namespace DiscordUserStatsBot
             }
 
             return rank;
+        }
+
+        public List<ulong> GetTopUsers(int numberOfUsers)
+        {
+            List<ulong> topUsers = new List<ulong>();
+
+            for (int i = 0; i < rankedUsers.Count && i < numberOfUsers; i++)
+            {
+                topUsers.Add(rankedUsers[i]);
+            }
+
+            return topUsers;
         }
 
         public List<SocketGuildUser> GetAllUsersInRank(UserStatRole rankRole, SocketGuild guildRef)
