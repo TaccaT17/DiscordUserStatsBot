@@ -289,8 +289,6 @@ namespace DiscordUserStatsBot
 
                 UserStatTracker stats;
                 int rankTime;
-                float avgMsgs;
-                TimeSpan avgVCTime;
 
                 for (int rank = 0; rank < topUsers.Count; rank++)
                 {
@@ -305,18 +303,26 @@ namespace DiscordUserStatsBot
 
                     //TODO: if totals use those instead
 
-
                     rankTime = stats.DetermineDays((int)UserStatTracker.rankConfig.rankTime);
-                    avgMsgs = stats.AverageMessages(rankTime);
-                    avgVCTime = stats.AverageChatTime(rankTime);
 
-                    builder.AddField($"Rank {rank} : {stats.UsersFullName}", $"Days calculated: {rankTime} \n Avg Msgs: {avgMsgs.ToString("0.00")} \n Avg VC: {avgVCTime}");
+                    //if avg
+                    if (UserStatTracker.rankConfig.rankBy.Equals(UserStatTracker.RankConfig.RankByType.average))
+                    {
+                        builder.AddField($"Rank {rank} : {stats.UsersFullName}", $"Days calculated: {rankTime} \n Avg Msgs: {stats.AverageMessages(rankTime).ToString("0.00")} \n Avg VC: {stats.AverageChatTime(rankTime)}");
+                    }
+                    else if (UserStatTracker.rankConfig.rankBy.Equals(UserStatTracker.RankConfig.RankByType.total))
+                    {
+                        builder.AddField($"Rank {rank} : {stats.UsersFullName}", $"Days calculated: {rankTime} \n Total Msgs: {stats.TotalMessages(rankTime)} \n Total VC: {stats.TotalChatTime(rankTime)}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Forgot to account for new RankBy type in showRanksCommand.");
+                    }
                 }
 
                 message.Channel.SendMessageAsync("", false, builder.Build());
 
                 return Task.CompletedTask;
-
             }
 
             //------------------------------------------
