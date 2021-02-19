@@ -406,56 +406,65 @@ namespace DiscordUserStatsBot
         /// </summary>
         public UserStatTracker GetUserStats(string userName)
         {
+            //Console.WriteLine($"GetUserStats called. Looking for '{userName}'");
+
             UserStatTracker userStatInst = null;
 
             //TODO: make this function more efficient
-            //if user in guildUserNameIndex
+            //if user in guildUserNameIndex get them
+            if (guildUserNameToIDIndex.ContainsKey(userName))
+            {
+                userStatInst = guildUserIDToStatIndex[guildUserNameToIDIndex[userName]];
+                return userStatInst;
+            }
+            //try updating names and if something changed try it again
+            while (UpdateOnceNameToID())
+            {
+                if (guildUserNameToIDIndex.ContainsKey(userName))
+                {
+                    userStatInst = guildUserIDToStatIndex[guildUserNameToIDIndex[userName]];
+                    return userStatInst;
+                }
+            }
+
+            //see if they just weren't capitalizing correctly or were excluding discriminator
+            int usersWithName = 0;
+            string foundUser = "";
+
+            foreach(KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
+            {
+                //Console.WriteLine($@"   Name attempt: {item.Key.ToLower().Substring(0, item.Key.Length - 5)}");
+
+                //Console.WriteLine($@"User name is {(item.Key.ToLower().Substring(0, item.Key.Length - 5))}");
+                //Console.WriteLine($@"userName is {userName}");
+
+                if (item.Key.ToLower().Equals(userName.ToLower()) || (item.Key.ToLower().Substring(0, item.Key.Length - 5)).Equals(userName.ToLower()))
+                {
+                    foundUser = item.Key;
+                    usersWithName++;
+                    //Console.WriteLine($@"       Found user with name {userName}");
+                }
+            }
+
+            if (usersWithName > 1)
+            {
+                Console.WriteLine($"Found multiple users with same name '{foundUser}' : getuserstat");
+                return userStatInst;
+            }
+            else
+            {
+                userName = foundUser;
+            }
+
             if (guildUserNameToIDIndex.ContainsKey(userName))
             {
                 userStatInst = guildUserIDToStatIndex[guildUserNameToIDIndex[userName]];
             }
             else
             {
-                int usersWithName = 0;
-                string foundUser = "";
-
-
-                //TODO: account for users who have changed their names (need to update dictonaries)
-                //see if they just weren't capitalizing correctly or were excluding discriminator
-                foreach(KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
-                {
-                    //Console.WriteLine($@"   Name attempt: {item.Key.ToLower().Substring(0, item.Key.Length - 5)}");
-
-                    //Console.WriteLine($@"User name is {(item.Key.ToLower().Substring(0, item.Key.Length - 5))}");
-                    //Console.WriteLine($@"userName is {userName}");
-
-                    if (item.Key.ToLower().Equals(userName.ToLower()) || (item.Key.ToLower().Substring(0, item.Key.Length - 5)).Equals(userName.ToLower()))
-                    {
-                        foundUser = item.Key;
-                        usersWithName++;
-                        //Console.WriteLine($@"       Found user with name {userName}");
-                    }
-                }
-
-                if (usersWithName > 1)
-                {
-                    Console.WriteLine($"Found multiple users with same name '{foundUser}' : getuserstat");
-                    return userStatInst;
-                }
-                else
-                {
-                    userName = foundUser;
-                }
-
-                if (guildUserNameToIDIndex.ContainsKey(userName))
-                {
-                    userStatInst = guildUserIDToStatIndex[guildUserNameToIDIndex[userName]];
-                }
-                else
-                {
-                    Console.WriteLine($"The bot has no recording of a user with that name '{userName}': userstat");
-                }
+                Console.WriteLine($"The bot has no recording of a user with that name '{userName}': userstat");
             }
+
 
             return userStatInst;
         }
@@ -465,9 +474,9 @@ namespace DiscordUserStatsBot
         /// </summary>
         public UserStatTracker GetUserStats(ulong userID)
         {
-            SocketGuildUser user = guildRef.GetUser(userID);
+            //Console.WriteLine($"GetUserStats called. Looking for '{userID}'");
 
-            return GetUserStats(GetUserNamePlusDiscrim(user));
+            return guildUserIDToStatIndex[userID];
         }
 
         /// <summary>
@@ -484,44 +493,97 @@ namespace DiscordUserStatsBot
             if (guildUserNameToIDIndex.ContainsKey(userName))
             {
                 userID = guildUserNameToIDIndex[userName];
+                return userID;
             }
-            else
+            //try updating names and if something changed try it again
+            while (UpdateOnceNameToID())
             {
-                int usersWithName = 0;
-                string foundUser = "";
-
-                //see if they just weren't capitalizing correctly or lacking discriminator
-                foreach (KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
-                {
-                    if (item.Key.ToLower().Equals(userName.ToLower()) || item.Key.ToLower().Substring(0, item.Key.Length - 5).Equals(userName.ToLower()))
-                    {
-                        userName = item.Key;
-                        usersWithName++;
-                        //Console.WriteLine($@"Found user with name {userName}");
-                    }
-                }
-
-                if (usersWithName > 1)
-                {
-                    Console.WriteLine($"Found multiple entries with same id '{foundUser}' : ID");
-                    return userID;
-                }
-                else
-                {
-                    userName = foundUser;
-                }
-                
                 if (guildUserNameToIDIndex.ContainsKey(userName))
                 {
                     userID = guildUserNameToIDIndex[userName];
+                    return userID;
                 }
-                else
+            }
+            
+            int usersWithName = 0;
+            string foundUser = "";
+
+            //see if they just weren't capitalizing correctly or lacking discriminator
+            foreach (KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
+            {
+                if (item.Key.ToLower().Equals(userName.ToLower()) || item.Key.ToLower().Substring(0, item.Key.Length - 5).Equals(userName.ToLower()))
                 {
-                    Console.WriteLine($"Search for ID: The bot has no recording of a user with that name: {userName}");
+                    userName = item.Key;
+                    usersWithName++;
+                    //Console.WriteLine($@"Found user with name {userName}");
                 }
             }
 
+            if (usersWithName > 1)
+            {
+                Console.WriteLine($"Found multiple entries with same id '{foundUser}' : ID");
+                return userID;
+            }
+            else
+            {
+                userName = foundUser;
+            }
+                
+            if (guildUserNameToIDIndex.ContainsKey(userName))
+            {
+                userID = guildUserNameToIDIndex[userName];
+            }
+            else
+            {
+                Console.WriteLine($"Search for ID: The bot has no recording of a user with that name: {userName}");
+            }
+
             return userID;
+        }
+
+        //TODO: bug where user is retaining old name in userstattracker
+
+        /// <summary>
+        /// Searches for user who changed their name. Stops and returns true if it finds a user who changed their name.
+        /// </summary>
+        /// <returns></returns>
+        private bool UpdateOnceNameToID()
+        {
+            if (guildRef == null)
+            {
+                Console.WriteLine("Error: Could not update usernameToID list because guild is null.");
+                return false;
+            }
+
+            foreach (var item in guildUserNameToIDIndex)
+            {
+                SocketGuildUser guildUser = guildRef.GetUser(item.Value);
+
+                if (guildUser != null)
+                {
+                    //if name not same name update dictionaries
+                    if (GetUserNamePlusDiscrim(guildUser) != item.Key)
+                    {
+                        guildUserNameToIDIndex.Remove(item.Key);
+                        guildUserNameToIDIndex.Add(GetUserNamePlusDiscrim(guildUser), guildUser.Id);
+
+                        guildUserIDToStatIndex[guildUser.Id].UpdateUsersName(guildUser);
+
+
+                        Console.WriteLine($"{guildUser.Username} changed their name. Updating dictionary entries.");
+                        return true;
+                    }
+                }
+                else
+                {
+                    //delete that entry (user not part of guild)
+                    Console.WriteLine("User left the guild. Deleting info.");
+                    guildUserNameToIDIndex.Remove(item.Key);
+                    guildUserIDToStatIndex.Remove(item.Value);
+                }
+            }
+
+            return false;
         }
 
         #endregion

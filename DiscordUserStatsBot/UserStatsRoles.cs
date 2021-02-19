@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace DiscordUserStatsBot
 {
 
-    //Note: USE REST WHEN SENDING REQUEST, USE WEBSOCKET WHEN 
+    //Note: USE REST WHEN SENDING REQUEST, USE WEBSOCKET WHEN
 
 
     class UserStatsRoles
@@ -128,12 +128,14 @@ namespace DiscordUserStatsBot
                     SocketRole usersExistingRoles;
                     IEnumerator<SocketRole> userExistingRoleE = guildRef.GetUser(rankedUsers[rankedUserIndex]).Roles.GetEnumerator();
                     bool alreadyHasRole = false;
+                    userExistingRoleE.MoveNext();  //skip @everyone role
+                    bool userActive = UserIsActive(rankedUsers[rankedUserIndex]);
                     while (userExistingRoleE.MoveNext())
                     {
                         usersExistingRoles = userExistingRoleE.Current;
 
                         //if user already has role you are good and is active
-                        if (usersExistingRoles.Id.Equals(rankRoles[rankRole].Id) && UserIsActive(rankedUsers[rankedUserIndex]))
+                        if (usersExistingRoles.Id.Equals(rankRoles[rankRole].Id) && userActive)
                         {
                             alreadyHasRole = true;
                             //Console.WriteLine($@"User already has appropriate role");
@@ -154,7 +156,7 @@ namespace DiscordUserStatsBot
                         }
                     }
 
-                    if (UserIsActive(rankedUsers[rankedUserIndex]))
+                    if (userActive)
                     {
                         if (!alreadyHasRole)
                         {
@@ -165,7 +167,7 @@ namespace DiscordUserStatsBot
                     }
                     else
                     {
-                        //Console.WriteLine("User is inactive therefore not applying a role.");
+                        Console.WriteLine("User is inactive therefore not applying a role.");
                         rankMemberAmountIteration--;
                     }
 

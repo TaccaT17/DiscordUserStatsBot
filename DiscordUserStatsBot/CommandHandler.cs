@@ -255,6 +255,7 @@ namespace DiscordUserStatsBot
                     rankTime = "Day";
                 }
 
+                /*
                 //returns bot info
                 message.Channel.SendMessageAsync($"Bot info: \n" +
                     $"- Bot command prefix: **{botCommandPrefix}** \n" +
@@ -262,6 +263,18 @@ namespace DiscordUserStatsBot
                     $"- When ranks will be recalculated: **{(myCont.GetAssignRolesTimerStart() + myCont.GetAssignRolesInterval()).ToString()}** \n" +
                     $"- Users ranked by: **{rankBy} {rankType}** in the past **{rankTime}**.\n" + 
                     $"- Rank roles: {roleNames}");
+                */
+
+                EmbedBuilder builder = new EmbedBuilder();
+
+                builder.WithTitle($"Bot Config Info:");
+                builder.AddField($"{botCommandPrefix}", "Bot command prefix");
+                builder.AddField($"{myCont.GetAssignRolesInterval().ToString(@"dd\.hh\:mm\:ss")}", "Assign ranks time interval");
+                builder.AddField($"{(myCont.GetAssignRolesTimerStart() + myCont.GetAssignRolesInterval()).ToString()}", "When ranks will be recalculated");
+                builder.AddField($"------------------------------------------------", $"Users ranked by: **{rankBy} {rankType}** in the past **{rankTime}**.");
+                builder.AddField($"Rank roles", $"{roleNames}");
+
+                message.Channel.SendMessageAsync("", false, builder.Build());
 
                 return Task.CompletedTask;
             }
@@ -281,12 +294,12 @@ namespace DiscordUserStatsBot
 
                 for (int rank = 0; rank < topUsers.Count; rank++)
                 {
-                    stats = myCont.GetUserStats(guildRef.GetUser(topUsers[rank]).Username);
+                    stats = myCont.GetUserStats(topUsers[rank]);
 
                     if(stats == null)
                     {
                         Console.WriteLine("Error: Top user not found on server.");
-                        builder.AddField($"Rank {rank} : UserNotFound", "Impacts users that have left the guild or have the same name as another guild member.");
+                        builder.AddField($"Rank {rank} : UserNotFound", "Impacts users that have left the guild.");
                         continue;
                     }
 
