@@ -72,25 +72,23 @@ namespace DiscordUserStatsBot
             //rule out messages that don't have bot prefix
             if (!message.Content.StartsWith(botCommandPrefix))
             {
-                //Console.WriteLine("Message is not a bot command");
                 return Task.CompletedTask;
             }
 
             //rule out messages that bots (including itself) create
             else if (message.Author.IsBot)
             {
-                //Console.WriteLine("Message is from a bot");
                 return Task.CompletedTask;
             }
 
             //ignore if this message was not sent in this guild
             if (((SocketGuildChannel)(message.Channel)).Guild.Id.Equals(guildRef.Id))
             {
-                Console.WriteLine("Command sent in this guild: " + ((SocketGuildChannel)(message.Channel)).Guild.Name);
+                myCont.Log(new Discord.LogMessage(LogSeverity.Debug, this.ToString(), "Command sent in this guild."));
             }
             else
             {
-                Console.WriteLine("Command sent in other guild: " + ((SocketGuildChannel)(message.Channel)).Guild.Name);
+                myCont.Log(new Discord.LogMessage(LogSeverity.Debug, this.ToString(), "Command sent in other guild."));
                 return Task.CompletedTask;
             }
             //--------------------------------------------------------------------------------------------------
@@ -218,39 +216,39 @@ namespace DiscordUserStatsBot
                 }
 
                 string rankType = "";
-                if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.messages))
+                if (myCont.userStatConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.messages))
                 {
                     rankType = "Messages";
                 }
-                else if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.voiceChatTime))
+                else if (myCont.userStatConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.voiceChatTime))
                 {
                     rankType = "Voice Chat Time";
                 }
-                else if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.msgAndVCT))
+                else if (myCont.userStatConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.msgAndVCT))
                 {
                     rankType = "Messages and Voice Chat Time";
                 }
 
                 string rankBy = "";
-                if (UserStatTracker.rankConfig.rankBy.Equals(UserStatTracker.RankConfig.RankByType.average))
+                if (myCont.userStatConfigRef.rankConfig.rankBy.Equals(UserStatConfig.RankConfig.RankByType.average))
                 {
                     rankBy = "Average";
                 }
-                else if (UserStatTracker.rankConfig.rankBy.Equals(UserStatTracker.RankConfig.RankByType.total))
+                else if (myCont.userStatConfigRef.rankConfig.rankBy.Equals(UserStatConfig.RankConfig.RankByType.total))
                 {
                     rankBy = "Total";
                 }
 
                 string rankTime = "";
-                if (UserStatTracker.rankConfig.rankTime.Equals(UserStatTracker.RankConfig.RankTimeType.month))
+                if (myCont.userStatConfigRef.rankConfig.rankTime.Equals(UserStatConfig.RankConfig.RankTimeType.month))
                 {
                     rankTime = "Month";
                 }
-                else if (UserStatTracker.rankConfig.rankTime.Equals(UserStatTracker.RankConfig.RankTimeType.week))
+                else if (myCont.userStatConfigRef.rankConfig.rankTime.Equals(UserStatConfig.RankConfig.RankTimeType.week))
                 {
                     rankTime = "Week";
                 }
-                else if (UserStatTracker.rankConfig.rankTime.Equals(UserStatTracker.RankConfig.RankTimeType.day))
+                else if (myCont.userStatConfigRef.rankConfig.rankTime.Equals(UserStatConfig.RankConfig.RankTimeType.day))
                 {
                     rankTime = "Day";
                 }
@@ -296,27 +294,27 @@ namespace DiscordUserStatsBot
 
                     if(stats == null)
                     {
-                        Console.WriteLine("Error: Top user not found on server.");
+                        myCont.Log(new Discord.LogMessage(LogSeverity.Error, this.ToString(), "Error: Top user not found on server."));
                         builder.AddField($"Rank {rank} : UserNotFound", "Impacts users that have left the guild.");
                         continue;
                     }
 
                     //TODO: if totals use those instead
 
-                    rankTime = stats.DetermineDays((int)UserStatTracker.rankConfig.rankTime);
+                    rankTime = stats.DetermineDays((int)myCont.userStatConfigRef.rankConfig.rankTime);
 
                     //if avg
-                    if (UserStatTracker.rankConfig.rankBy.Equals(UserStatTracker.RankConfig.RankByType.average))
+                    if (myCont.userStatConfigRef.rankConfig.rankBy.Equals(UserStatConfig.RankConfig.RankByType.average))
                     {
-                        builder.AddField($"Rank {rank} : {stats.UsersFullName}", $"Days calculated: {rankTime} \n Avg Msgs: {stats.AverageMessages(rankTime).ToString("0.00")} \n Avg VC: {stats.AverageChatTime(rankTime)}");
+                        builder.AddField($"Rank {rank} : {stats.UsersFullName}", $"Days calculated: {rankTime} \n Avg Msgs: {stats.AverageMessages(rankTime).ToString("0.00")} \n Avg VC: {stats.AverageChatTime(rankTime).ToString(@"dd\.hh\:mm\:ss")}");
                     }
-                    else if (UserStatTracker.rankConfig.rankBy.Equals(UserStatTracker.RankConfig.RankByType.total))
+                    else if (myCont.userStatConfigRef.rankConfig.rankBy.Equals(UserStatConfig.RankConfig.RankByType.total))
                     {
-                        builder.AddField($"Rank {rank} : {stats.UsersFullName}", $"Days calculated: {rankTime} \n Total Msgs: {stats.TotalMessages(rankTime)} \n Total VC: {stats.TotalChatTime(rankTime)}");
+                        builder.AddField($"Rank {rank} : {stats.UsersFullName}", $"Days calculated: {rankTime} \n Total Msgs: {stats.TotalMessages(rankTime)} \n Total VC: {stats.TotalChatTime(rankTime).ToString(@"dd\.hh\:mm\:ss")}");
                     }
                     else
                     {
-                        Console.WriteLine("Forgot to account for new RankBy type in showRanksCommand.");
+                        myCont.Log(new Discord.LogMessage(LogSeverity.Error, this.ToString(), "Forgot to account for new RankBy type in showRanksCommand."));
                     }
                 }
 
@@ -387,7 +385,7 @@ namespace DiscordUserStatsBot
                         postRank = "rd";
                     }
 
-                    int rankTime = tempUserStat.DetermineDays((int)UserStatTracker.rankConfig.rankTime);
+                    int rankTime = tempUserStat.DetermineDays((int)myCont.userStatConfigRef.rankConfig.rankTime);
 
                     int totalMsgs = tempUserStat.TotalMessages(rankTime);
                     TimeSpan totalVCTime = tempUserStat.TotalChatTime(rankTime);
@@ -444,11 +442,11 @@ namespace DiscordUserStatsBot
 
                             if(tempStatTracker == null)
                             {
-                                Console.WriteLine($"Error: No info on {roleName} member '{myCont.GetUserNamePlusDiscrim(guildUser)}'");
+                                myCont.Log(new Discord.LogMessage(LogSeverity.Error, this.ToString(), $"Error: No info on {roleName} member '{myCont.GetUserNamePlusDiscrim(guildUser)}'"));
                             }
                             else
                             {
-                                int tempDays = tempStatTracker.DetermineDays((int)UserStatTracker.rankConfig.rankTime);
+                                int tempDays = tempStatTracker.DetermineDays((int)myCont.userStatConfigRef.rankConfig.rankTime);
                                 if(daysCalculatedOver < tempDays)
                                 {
                                     daysCalculatedOver = tempDays;
@@ -496,8 +494,6 @@ namespace DiscordUserStatsBot
                     message.Channel.SendMessageAsync($@"Sorry, you need the {GuildPermission.Administrator} permission to do this");
                     return Task.CompletedTask;
                 }
-
-                //Console.WriteLine("Prefix command called");
                 //if nothing after prefix then print out prefix otherwise set the prefix to 1st character after space
                 if (stringAfterCommand.Equals(ignoreAfterCommandString))
                 {
@@ -506,7 +502,7 @@ namespace DiscordUserStatsBot
                 else
                 {
                     ChangePrefixCommand(message, stringAfterCommand);
-                    Console.WriteLine("Set new prefix");
+                    myCont.Log("Set new prefix");
                     myCont.saveHandlerRef.SaveObject(botCommandPrefix, nameof(CommandHandler.BotCommandPrefix), guildRef);
                 }
 
@@ -545,35 +541,35 @@ namespace DiscordUserStatsBot
 
                 if (stringAfterCommand.ToLower().Equals("Msg".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.messages, myCont);
+                    myCont.userStatConfigRef.ChangeRankCriteria(UserStatConfig.RankConfig.RankType.messages, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Vc".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.voiceChatTime, myCont);
+                    myCont.userStatConfigRef.ChangeRankCriteria(UserStatConfig.RankConfig.RankType.voiceChatTime, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Msg&Vc".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankType.msgAndVCT, myCont);
+                    myCont.userStatConfigRef.ChangeRankCriteria(UserStatConfig.RankConfig.RankType.msgAndVCT, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Avg".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankByType.average, myCont);
+                    myCont.userStatConfigRef.ChangeRankCriteria(UserStatConfig.RankConfig.RankByType.average, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Total".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankByType.total, myCont);
+                    myCont.userStatConfigRef.ChangeRankCriteria(UserStatConfig.RankConfig.RankByType.total, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Month".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.month, myCont);
+                    myCont.userStatConfigRef.ChangeRankCriteria(UserStatConfig.RankConfig.RankTimeType.month, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Week".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.week, myCont);
+                    myCont.userStatConfigRef.ChangeRankCriteria(UserStatConfig.RankConfig.RankTimeType.week, myCont);
                 }
                 else if (stringAfterCommand.ToLower().Equals("Day".ToLower()))
                 {
-                    UserStatTracker.ChangeRankCriteria(UserStatTracker.RankConfig.RankTimeType.day, myCont);
+                    myCont.userStatConfigRef.ChangeRankCriteria(UserStatConfig.RankConfig.RankTimeType.day, myCont);
                 }
                 else
                 {
@@ -615,7 +611,7 @@ namespace DiscordUserStatsBot
 
                 if(!(Int32.TryParse(newMemberLimitString, out newMemberLimit)))
                 {
-                    Console.WriteLine($@"Failed to convert amount string into integer.");
+                    myCont.Log(new Discord.LogMessage(LogSeverity.Warning, this.ToString(), $@"Failed to change memberAmount (string not converted to int)"));
                     return Task.CompletedTask;
                 }
 
@@ -628,13 +624,13 @@ namespace DiscordUserStatsBot
                         if(newMemberLimit < 0)
                         {
                             newMemberLimit = 0;
-                            Console.WriteLine("MemberLimit amount cannot be negative. Changed to '0'");
+                            myCont.Log(new Discord.LogMessage(LogSeverity.Debug, this.ToString(), "MemberLimit amount cannot be negative. Changed to '0'"));
                         }
 
                         //...set new amount 
                         myCont.userStatRolesRef.rankRoles[index].memberLimit = newMemberLimit;
                         message.AddReactionAsync(emoteClap);
-                        Console.WriteLine($@"{myCont.userStatRolesRef.rankRoles[index].name} memberLimit changed to {newMemberLimit}.");
+                        myCont.Log($@"{myCont.userStatRolesRef.rankRoles[index].name} memberLimit changed to {newMemberLimit}.");
                     }
                 }
 

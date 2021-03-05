@@ -14,9 +14,14 @@ namespace DiscordUserStatsBot
     class MainClass
     {
 
-        private string filePath;
+        private static string filePath;
         private DiscordSocketClient client; //         <--------------------------------THIS IS YOUR REFERENCE TO EVERYTHING
         private bool guildInstancesInitialized;
+
+        public static string FilePath
+        {
+            get { return filePath; }
+        }
 
         public static void Main(string[] args)
         => new MainClass().MainAsync().GetAwaiter().GetResult();
@@ -33,7 +38,7 @@ namespace DiscordUserStatsBot
             filePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             if(client == null)
             {
-                Console.WriteLine("Client null, making new client");
+                await Log(new LogMessage(LogSeverity.Info, this.ToString(), "Client null, making new client"));
                 client = new DiscordSocketClient(config);
             }
             
@@ -70,7 +75,7 @@ namespace DiscordUserStatsBot
         {
             if (!guildInstancesInitialized)
             {
-                Console.WriteLine("     Creating guild instances.");
+                Log(new LogMessage(LogSeverity.Info, this.ToString(), "     Creating guild instances."));
 
                 //for each guild create controller
                 SocketGuild guild;

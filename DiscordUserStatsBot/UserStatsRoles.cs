@@ -60,7 +60,7 @@ namespace DiscordUserStatsBot
                 rankRoles[index] = new UserStatRole((ulong)0, defaultRoleNames[index], defaultRoleMemberAmount[index], defaultRoleColors[index], 0);
             }
 
-            Console.WriteLine("Default Roles Created");
+            myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), "Default Roles Created"));
         }
 
         /// <summary>
@@ -69,7 +69,7 @@ namespace DiscordUserStatsBot
         /// <param name="guildRef"></param>
         public async void AssignRoles(SocketGuild guildRef)
         {
-            Console.WriteLine("Assigning Roles");
+            myCont.Log("Assigning Roles");
 
             //check to make sure have all roles
             CreateRoles(guildRef);
@@ -120,7 +120,7 @@ namespace DiscordUserStatsBot
                 {
                     if(rankedUserIndex >= rankedUsers.Count || rankedUsers.Count < 1)
                     {
-                        //Console.WriteLine("Ran out of users to assign roles to");
+                        //Log("Ran out of users to assign roles to", Discord.LogSeverity.Debug);
                         return;
                     }
                     
@@ -138,8 +138,6 @@ namespace DiscordUserStatsBot
                         if (usersExistingRoles.Id.Equals(rankRoles[rankRole].Id) && userActive)
                         {
                             alreadyHasRole = true;
-                            //Console.WriteLine($@"User already has appropriate role");
-
                         }
                         //if the user has another ranked role or is inactive remove that role
                         //TODO: is iterationg more times than necessary
@@ -150,7 +148,6 @@ namespace DiscordUserStatsBot
                                 if (usersExistingRoles.Id.Equals(rankRoles[role].Id))
                                 {
                                     await guildRef.GetUser(rankedUsers[rankedUserIndex]).RemoveRoleAsync(guildRef.GetRole(rankRoles[role].Id));
-                                    //Console.WriteLine($@"Removed unnecesary rank role");
                                 }
                             }
                         }
@@ -162,12 +159,11 @@ namespace DiscordUserStatsBot
                         {
                             //if user doesnt have role assign it
                             await guildRef.GetUser(rankedUsers[rankedUserIndex]).AddRoleAsync(guildRef.GetRole(rankRoles[rankRole].Id));
-                            //Console.WriteLine($@"Gave user appropriate rank role");
                         }
                     }
                     else
                     {
-                        Console.WriteLine("User is inactive therefore not applying a role.");
+                        myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), "This user is inactive therefore not applying a role."));
                         rankMemberAmountIteration--;
                     }
 
@@ -218,7 +214,7 @@ namespace DiscordUserStatsBot
             {
                 UserStatTracker stats = myCont.GetUserStats(iD);
 
-                if (stats != null && (stats.TotalChatTime((int)UserStatTracker.rankConfig.rankTime) > TimeSpan.Zero || stats.TotalMessages((int)UserStatTracker.rankConfig.rankTime) > 0))
+                if (stats != null && (stats.TotalChatTime((int)myCont.userStatConfigRef.rankConfig.rankTime) > TimeSpan.Zero || stats.TotalMessages((int)myCont.userStatConfigRef.rankConfig.rankTime) > 0))
                 {
                     return true;
                 }
@@ -238,8 +234,6 @@ namespace DiscordUserStatsBot
         /// </summary>
         public void RankUsers()
         {
-            
-
             //generate ordered list of userStatTrackers from ranked iD list. I use rankedID list for this because it should be already pretty close to being in the correct order.
             List<UserStatTracker> userStatTrackersList = new List<UserStatTracker>();
             for (int iD = 0; iD < rankedUsers.Count; iD++)
@@ -250,7 +244,7 @@ namespace DiscordUserStatsBot
 
             //TODO: make this more efficient by calling recurring function (funciton calls itself)
             //if sorting by both messages and voice chat time
-            if (UserStatTracker.rankConfig.rankType.Equals(UserStatTracker.RankConfig.RankType.msgAndVCT))
+            if (myCont.userStatConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.msgAndVCT))
             {
                 //create list that is ranked by messages
                 //create list that is ranked by vctime
@@ -262,10 +256,10 @@ namespace DiscordUserStatsBot
                     sortedByVCTime.Add(userStatTrackersList[index]);
                 }
 
-                UserStatTracker.rankConfig.rankType = UserStatTracker.RankConfig.RankType.messages;
+                myCont.userStatConfigRef.rankConfig.rankType = UserStatConfig.RankConfig.RankType.messages;
                 sortedByMessages.Sort();
 
-                UserStatTracker.rankConfig.rankType = UserStatTracker.RankConfig.RankType.voiceChatTime;
+                myCont.userStatConfigRef.rankConfig.rankType = UserStatConfig.RankConfig.RankType.voiceChatTime;
                 sortedByVCTime.Sort();
 
                 for (int index = 0; index < userStatTrackersList.Count; index++)
@@ -275,7 +269,7 @@ namespace DiscordUserStatsBot
                     sortedByVCTime[index].vcTimeRankPosition = index;
                 }
 
-                UserStatTracker.rankConfig.rankType = UserStatTracker.RankConfig.RankType.msgAndVCT;
+                myCont.userStatConfigRef.rankConfig.rankType = UserStatConfig.RankConfig.RankType.msgAndVCT;
                 //now when userStatTrackerList sorts will have accurate data
             }
 
@@ -306,12 +300,6 @@ namespace DiscordUserStatsBot
 
                     //set roles ID to created discord role ID
                     rankRoles[index].Id = tempRestRole.Id;
-
-                    //Console.WriteLine($@"{tempRestRole.Name} role created.");
-                }
-                else
-                {
-                    //Console.WriteLine($@"{rankRoles[index].name} role found");
                 }
             }
             return;
@@ -332,7 +320,7 @@ namespace DiscordUserStatsBot
             }
             else
             {
-                Console.WriteLine("Error: rankedUsers null");
+                myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), "Error: rankedUsers null"));
             }
 
             return rank;
@@ -356,7 +344,7 @@ namespace DiscordUserStatsBot
 
             if (guildRef.GetRole(rankRole.Id) == null)
             {
-                Console.WriteLine("Error: No role in the guild with that ID.");
+                myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), "Error: No role in the guild with that ID."));
                 return null;
             }
 
@@ -395,16 +383,12 @@ namespace DiscordUserStatsBot
             {
                 discordRole = roleE.Current;
 
-                //Console.WriteLine($@"Discord role = {discordRole.Name}");
-
                 for (int userStatRole = 0; userStatRole < rankRoles.Length; userStatRole++)
                 {
-                    //Console.WriteLine($@"   Array role = {rankRoles[userStatRole].name}");
 
                     //if same ID as a the roles Array role ID update the roles Array role
-                    if (rankRoles[userStatRole].Id.Equals(discordRole.Id))                   //NULL CHECK? DONT NEED ONE CAUSE STRUCT?
+                    if (rankRoles[userStatRole].Id.Equals(discordRole.Id))
                     {
-                        //Console.WriteLine($@"       Same Role!");
                         //set so has same properties
                         rankRoles[userStatRole].name = discordRole.Name;
                         rankRoles[userStatRole].color = discordRole.Color;
@@ -416,8 +400,6 @@ namespace DiscordUserStatsBot
 
             //save roles array
             saveRef.SaveArray(rankRoles, rolesSaveFileName, guildRef);
-
-            //Console.WriteLine("Roles Saved");
 
             return Task.CompletedTask;
         }

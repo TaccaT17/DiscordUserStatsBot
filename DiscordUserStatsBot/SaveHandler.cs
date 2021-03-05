@@ -35,8 +35,6 @@ namespace DiscordUserStatsBot
             string saveFilePath = fileFolderPath + $@"\" + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
 
             File.WriteAllText(saveFilePath, jsonDataString);
-
-            //Console.WriteLine("Saved!");
         }
 
         public Dictionary<K, T> LoadDictionary<K, T>(out Dictionary<K, T> dictionaryToLoad, string nameOfSaveFile, SocketGuild guild)
@@ -47,7 +45,6 @@ namespace DiscordUserStatsBot
             {
                 string jsonDataString = File.ReadAllText(saveFilePath);
                 dictionaryToLoad = JsonConvert.DeserializeObject<Dictionary<K, T>>(jsonDataString);
-                //Console.WriteLine("Loaded!");
                 return dictionaryToLoad;
             }
             else

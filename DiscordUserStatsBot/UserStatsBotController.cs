@@ -87,6 +87,7 @@ namespace DiscordUserStatsBot
         public SaveHandler saveHandlerRef;
         public UserStatsRoles userStatRolesRef;
         private CommandHandler commandHandlerRef;
+        public UserStatConfig userStatConfigRef;
 
         //assign roles timer
         private System.Timers.Timer assignRolesTimer;
@@ -108,12 +109,48 @@ namespace DiscordUserStatsBot
 
         List<SocketUser> usersInChat;
 
+        bool devMode = true;
+
         //--------------------------------------------------------------------------------------------------------------------------------------------------------------- 
         #endregion
 
 
         #region FUNCTIONS
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
+        public void Log(string msg)
+        {
+            string output = $"{guildRef.Name} - " + new LogMessage(LogSeverity.Info, this.ToString(), msg).ToString();
+
+            using (System.IO.StreamWriter file =
+            new System.IO.StreamWriter(MainClass.FilePath + @"\logs.txt", true))
+            {
+                file.WriteLine(output);
+            }
+
+            Console.WriteLine(output);
+            return;
+        }
+
+        public void Log(LogMessage msg)
+        {
+            //ignore debugs if not in devmode
+            if(msg.Severity.Equals(LogSeverity.Debug) && !devMode)
+            {
+                return;
+            }
+
+            string output = $"{guildRef.Name} - " + msg.ToString();
+
+            using (System.IO.StreamWriter file =
+            new System.IO.StreamWriter(MainClass.FilePath + @"\logs.txt", true))
+            {
+                file.WriteLine(output);
+            }
+
+            Console.WriteLine(output);
+            return;
+        }
+
         #region InitFunctions
         public UserStatsBotController(DiscordSocketClient client, SocketGuild guild)
         {
@@ -140,7 +177,7 @@ namespace DiscordUserStatsBot
             {
                 guildRef = guild;
 
-                Console.WriteLine($"Set up new guild reference to {guildRef.Name}");
+                Log($"Set up new guild reference to {guildRef.Name}");
 
                 //TODO: get relevant info AKA if this bot is new to the server make dictioneries, if not get dictionaries
             }
@@ -199,7 +236,7 @@ namespace DiscordUserStatsBot
                 Console.WriteLine($@"   User in guild: {user.Username}");
             }*/
 
-            Console.WriteLine("Bot set up");
+            Log("Bot set up");
         }
 
         private Task Disconnect(Exception exception) //what about crashes???
@@ -210,7 +247,7 @@ namespace DiscordUserStatsBot
                 StopRecordingVCTime(usersInChat[userIndex]);
             }
 
-            Console.WriteLine($@"There are {usersInChat.Count} users in chat for {guildRef.Name}");
+            //Log($@"There are {usersInChat.Count} users in chat for {guildRef.Name}");
 
             return Task.CompletedTask;
         }
@@ -331,7 +368,7 @@ namespace DiscordUserStatsBot
             {
                 guildUserNameToIDIndex.Add(usernamePlusDiscrim, user.Id);
                 guildUserIDToStatIndex.Add(user.Id, new UserStatTracker(this, usernamePlusDiscrim, user.Id));
-                Console.WriteLine($@"Created a new stat tracker for {usernamePlusDiscrim}");
+                Log($@"Created a new stat tracker for {usernamePlusDiscrim}");
                 //save dictionariess
                 saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex), guildRef);
                 saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex), guildRef);
@@ -345,7 +382,7 @@ namespace DiscordUserStatsBot
 
                 saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex), guildRef);
 
-                Console.WriteLine($@"ID/UserStat dictionary was at some point deleted. Therefore making a fresh ID/UserStat entry for {usernamePlusDiscrim}.");
+                Log(new LogMessage(LogSeverity.Debug, this.ToString(), $@"ID/UserStat dictionary was at some point deleted. Therefore making a fresh ID/UserStat entry for {usernamePlusDiscrim}."));
 
                 return Task.CompletedTask;
             }
@@ -373,7 +410,7 @@ namespace DiscordUserStatsBot
                         //update userstat username to reflect this
                         guildUserIDToStatIndex[user.Id].UpdateUsersName((SocketGuildUser)user);
 
-                        Console.WriteLine($@"{usernamePlusDiscrim} changed their username! Replaced their Username/ID entry {item.Key}, {item.Value} with {usernamePlusDiscrim}, {user.Id}");
+                        Log(new LogMessage(LogSeverity.Debug, this.ToString(), $@"{usernamePlusDiscrim} changed their username! Replaced their Username/ID entry {item.Key}, {item.Value} with {usernamePlusDiscrim}, {user.Id}"));
                     }
                 }
 
@@ -381,7 +418,7 @@ namespace DiscordUserStatsBot
                 if (!userChangedTheirName)
                 {
                     guildUserNameToIDIndex.Add(usernamePlusDiscrim, user.Id);
-                    Console.WriteLine($@"Username/ID dictionary was at some point deleted. Therefore making a fresh Username/ID entry for {usernamePlusDiscrim}.");
+                    Log(new LogMessage(LogSeverity.Warning, this.ToString(), $@"Username/ID dictionary was at some point deleted. Therefore making a fresh Username/ID entry for {usernamePlusDiscrim}."));
                 }
 
                 saveHandlerRef.SaveDictionary(guildUserNameToIDIndex, nameof(guildUserNameToIDIndex), guildRef);
@@ -433,22 +470,18 @@ namespace DiscordUserStatsBot
 
             foreach(KeyValuePair<string, ulong> item in guildUserNameToIDIndex)
             {
-                //Console.WriteLine($@"   Name attempt: {item.Key.ToLower().Substring(0, item.Key.Length - 5)}");
-
-                //Console.WriteLine($@"User name is {(item.Key.ToLower().Substring(0, item.Key.Length - 5))}");
-                //Console.WriteLine($@"userName is {userName}");
 
                 if (item.Key.ToLower().Equals(userName.ToLower()) || (item.Key.ToLower().Substring(0, item.Key.Length - 5)).Equals(userName.ToLower()))
                 {
                     foundUser = item.Key;
                     usersWithName++;
-                    //Console.WriteLine($@"       Found user with name {userName}");
+                    //Log($@"       Found user with name {userName}");
                 }
             }
 
             if (usersWithName > 1)
             {
-                Console.WriteLine($"Found multiple users with same name '{foundUser}' : getuserstat");
+                Log(new LogMessage(LogSeverity.Debug, this.ToString(), $"Found multiple users with same name '{foundUser}' : getuserstat"));
                 return userStatInst;
             }
             else
@@ -462,7 +495,7 @@ namespace DiscordUserStatsBot
             }
             else
             {
-                Console.WriteLine($"The bot has no recording of a user with that name '{userName}': userstat");
+                Log(new LogMessage(LogSeverity.Debug, this.ToString(), $"The bot has no recording of a user with that name '{userName}': userstat"));
             }
 
 
@@ -521,7 +554,7 @@ namespace DiscordUserStatsBot
 
             if (usersWithName > 1)
             {
-                Console.WriteLine($"Found multiple entries with same id '{foundUser}' : ID");
+                Log(new LogMessage(LogSeverity.Debug, this.ToString(), $"Found multiple entries with same id '{foundUser}' : ID"));
                 return userID;
             }
             else
@@ -535,7 +568,7 @@ namespace DiscordUserStatsBot
             }
             else
             {
-                Console.WriteLine($"Search for ID: The bot has no recording of a user with that name: {userName}");
+                Log(new LogMessage(LogSeverity.Debug, this.ToString(), $"Search for ID: The bot has no recording of a user with that name: {userName}"));
             }
 
             return userID;
@@ -551,7 +584,7 @@ namespace DiscordUserStatsBot
         {
             if (guildRef == null)
             {
-                Console.WriteLine("Error: Could not update usernameToID list because guild is null.");
+                Log(new LogMessage(LogSeverity.Warning, this.ToString(), "Error: Could not update usernameToID list because guild is null."));
                 return false;
             }
 
@@ -570,14 +603,14 @@ namespace DiscordUserStatsBot
                         guildUserIDToStatIndex[guildUser.Id].UpdateUsersName(guildUser);
 
 
-                        Console.WriteLine($"{guildUser.Username} changed their name. Updating dictionary entries.");
+                        Log(new LogMessage(LogSeverity.Debug, this.ToString(), $"{guildUser.Username} changed their name. Updating dictionary entries."));
                         return true;
                     }
                 }
                 else
                 {
                     //delete that entry (user not part of guild)
-                    Console.WriteLine("User left the guild. Deleting info.");
+                    Log(new LogMessage(LogSeverity.Debug, this.ToString(), "User left the guild. Deleting info."));
                     guildUserNameToIDIndex.Remove(item.Key);
                     guildUserIDToStatIndex.Remove(item.Value);
                 }
@@ -617,7 +650,7 @@ namespace DiscordUserStatsBot
                 }
             }
 
-            Console.WriteLine($@"There are {usersInChatList.Count} users in chat");
+            //Log($@"There are {usersInChatList.Count} users in chat");
         }
 
         public bool UserIsInChat(SocketUser userInQuestion)
@@ -690,7 +723,7 @@ namespace DiscordUserStatsBot
             assignRolesStartTime = DateTime.Now;
             //save assignRolesTimer
             saveHandlerRef.SaveObject(assignRolesTimeSpan, nameof(assignRolesTimeSpan), guildRef);
-            Console.WriteLine("Assign timer interval changed");
+            Log("Assign timer interval changed");
         }
 
         public TimeSpan GetAssignRolesInterval()
@@ -746,18 +779,28 @@ namespace DiscordUserStatsBot
                 assignRolesTimeSpan = new TimeSpan(24, 0, 0);
             }
 
-            //TODO: TEST THIS
-            //load rank Config
-            //saveHandlerRef.LoadObject(out UserStatTracker.rankConfig, nameof(rankConfigSave));
-            saveHandlerRef.LoadObject(out UserStatTracker.rankConfig, nameof(UserStatTracker.rankConfig), guildRef);
-            if (!(UserStatTracker.rankConfig.initialized))
+            //if userStatConfig null make new one
+            if (userStatConfigRef == null)
             {
-                UserStatTracker.DefaultRankConfig();
+                userStatConfigRef = new UserStatConfig(this);
+            }
+
+            //load rank Config
+            saveHandlerRef.LoadObject(out userStatConfigRef.rankConfig, nameof(userStatConfigRef.rankConfig), guildRef);
+            if (!(userStatConfigRef.rankConfig.initialized))
+            {
+                userStatConfigRef.DefaultRankConfig();
             }
 
             //set up user dictionaries and load any info that already exists
             saveHandlerRef.LoadDictionary(out guildUserIDToStatIndex, nameof(guildUserIDToStatIndex), guildRef); //out keyword passes by reference instead of value
             saveHandlerRef.LoadDictionary(out guildUserNameToIDIndex, nameof(guildUserNameToIDIndex), guildRef);
+
+            //ensure StatTrackers linked to this controller
+            foreach(KeyValuePair<ulong, UserStatTracker> item in guildUserIDToStatIndex)
+            {
+                item.Value.SetController(this);
+            }
 
             if (guildUserNameToIDIndex == null)
             {
@@ -781,8 +824,6 @@ namespace DiscordUserStatsBot
             }
             commandHandlerRef.BotCommandPrefix = savedBCP;
 
-            //TODO: reset any user's lasttimein/out of vc time
-
         }
 
         /// <summary>
@@ -797,9 +838,7 @@ namespace DiscordUserStatsBot
             saveHandlerRef.SaveObject(assignRolesTimeSpan, nameof(assignRolesTimeSpan), guildRef);
 
             //rank config save
-            //rankConfigSave = UserStatTracker.rankConfig;
-            //saveHandlerRef.SaveObject(rankConfigSave, nameof(rankConfigSave));
-            saveHandlerRef.SaveObject(UserStatTracker.rankConfig, nameof(UserStatTracker.rankConfig), guildRef);
+            saveHandlerRef.SaveObject(userStatConfigRef.rankConfig, nameof(userStatConfigRef.rankConfig), guildRef);
 
             userStatRolesRef.SaveRankedUsers();
 
