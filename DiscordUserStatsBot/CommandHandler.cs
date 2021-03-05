@@ -84,11 +84,11 @@ namespace DiscordUserStatsBot
             //ignore if this message was not sent in this guild
             if (((SocketGuildChannel)(message.Channel)).Guild.Id.Equals(guildRef.Id))
             {
-                myCont.Log(new Discord.LogMessage(LogSeverity.Debug, this.ToString(), "Command sent in this guild."));
+                myCont.Log(new Discord.LogMessage(LogSeverity.Debug, this.ToString(), "Command sent in THIS guild."));
             }
             else
             {
-                myCont.Log(new Discord.LogMessage(LogSeverity.Debug, this.ToString(), "Command sent in other guild."));
+                myCont.Log(new Discord.LogMessage(LogSeverity.Debug, this.ToString(), "Command sent in OTHER guild."));
                 return Task.CompletedTask;
             }
             //--------------------------------------------------------------------------------------------------

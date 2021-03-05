@@ -119,7 +119,12 @@ namespace DiscordUserStatsBot
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         public void Log(string msg)
         {
-            string output = $"{guildRef.Name} - " + new LogMessage(LogSeverity.Info, this.ToString(), msg).ToString();
+            //string output = $"{guildRef.Name} - " + "\t" + new LogMessage(LogSeverity.Info, this.ToString(), msg).ToString();
+
+            string output1 = $"{guildRef.Name} - ";
+            string output2 = new LogMessage(LogSeverity.Info, this.ToString(), msg).ToString();
+
+            string output = String.Format("{0,-30}{1,-10}", output1, output2);
 
             using (System.IO.StreamWriter file =
             new System.IO.StreamWriter(MainClass.FilePath + @"\logs.txt", true))
@@ -139,7 +144,10 @@ namespace DiscordUserStatsBot
                 return;
             }
 
-            string output = $"{guildRef.Name} - " + msg.ToString();
+            string output1 = $"{guildRef.Name} - ";
+            string output2 = msg.ToString();
+
+            string output = String.Format("{0,-30}{1,-10}", output1, output2);
 
             using (System.IO.StreamWriter file =
             new System.IO.StreamWriter(MainClass.FilePath + @"\logs.txt", true))
@@ -317,6 +325,12 @@ namespace DiscordUserStatsBot
 
         private Task RecordMessageSent(SocketMessage message)
         {
+            //if not correct guild
+            if (!(((SocketGuildChannel)message.Channel).Guild.Id.Equals(guildRef.Id)))
+            {
+                return Task.CompletedTask;
+            }
+
             //don't count bot commands as messages
             if (commandHandlerRef.wasBotCommand)
             {
@@ -443,11 +457,8 @@ namespace DiscordUserStatsBot
         /// </summary>
         public UserStatTracker GetUserStats(string userName)
         {
-            //Console.WriteLine($"GetUserStats called. Looking for '{userName}'");
-
             UserStatTracker userStatInst = null;
 
-            //TODO: make this function more efficient
             //if user in guildUserNameIndex get them
             if (guildUserNameToIDIndex.ContainsKey(userName))
             {
@@ -796,12 +807,6 @@ namespace DiscordUserStatsBot
             saveHandlerRef.LoadDictionary(out guildUserIDToStatIndex, nameof(guildUserIDToStatIndex), guildRef); //out keyword passes by reference instead of value
             saveHandlerRef.LoadDictionary(out guildUserNameToIDIndex, nameof(guildUserNameToIDIndex), guildRef);
 
-            //ensure StatTrackers linked to this controller
-            foreach(KeyValuePair<ulong, UserStatTracker> item in guildUserIDToStatIndex)
-            {
-                item.Value.SetController(this);
-            }
-
             if (guildUserNameToIDIndex == null)
             {
                 guildUserNameToIDIndex = new Dictionary<string, ulong>();
@@ -813,6 +818,12 @@ namespace DiscordUserStatsBot
                 //Console.WriteLine("New dictionary to save IDs and UserStats made.");
             }
 
+            //ensure StatTrackers linked to this controller
+            foreach (KeyValuePair<ulong, UserStatTracker> item in guildUserIDToStatIndex)
+            {
+                item.Value.SetController(this);
+            }
+
             userStatRolesRef.LoadRankedUsers();
 
             //load prefix
@@ -821,6 +832,7 @@ namespace DiscordUserStatsBot
             if (savedBCP.Equals(default))
             {
                 savedBCP = '!';
+                Log(new LogMessage(LogSeverity.Debug, this.ToString(), "Using default prefix."));
             }
             commandHandlerRef.BotCommandPrefix = savedBCP;
 
