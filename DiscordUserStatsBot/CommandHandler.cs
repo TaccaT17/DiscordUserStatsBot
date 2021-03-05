@@ -88,7 +88,7 @@ namespace DiscordUserStatsBot
             }
             else
             {
-                myCont.Log(new Discord.LogMessage(LogSeverity.Debug, this.ToString(), "Command sent in OTHER guild."));
+                //myCont.Log(new Discord.LogMessage(LogSeverity.Debug, this.ToString(), "Command sent in OTHER guild."));
                 return Task.CompletedTask;
             }
             //--------------------------------------------------------------------------------------------------
@@ -577,7 +577,7 @@ namespace DiscordUserStatsBot
                     return Task.CompletedTask;
                 }
                 //update ranks to reflect changed rank criteria\
-                Console.Write("Changed rank criteria so ");
+                myCont.Log("Changed rank criteria.");
                 myCont.userStatRolesRef.AssignRoles(guildRef);
 
                 message.AddReactionAsync(emoteClap);
@@ -635,7 +635,7 @@ namespace DiscordUserStatsBot
                 }
 
                 //update roles
-                Console.Write("Changed number of users in a role so ");
+                myCont.Log("Changed number of users in a role.");
                 myCont.userStatRolesRef.AssignRoles(guildRef);
                 //save roles
                 myCont.userStatRolesRef.SaveRankRoles(guildRef, myCont.saveHandlerRef);

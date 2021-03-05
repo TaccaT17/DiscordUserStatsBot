@@ -17,7 +17,7 @@ using System.Timers;
 
 //CURRENT TASK: 
 
-//Debugging Issues: The Average() for TimeSpan is inaccurate???
+//Debugging Issues: 
 
 ///Completed
 ///
@@ -721,7 +721,7 @@ namespace DiscordUserStatsBot
 
         private void AssignRolesTimerCallback(Object source, ElapsedEventArgs e)
         {
-            Console.Write("Timer ended so ");
+            Log("Timer ended so ");
             userStatRolesRef.AssignRoles(guildRef);
         }
 
@@ -729,7 +729,7 @@ namespace DiscordUserStatsBot
         {
             assignRolesTimeSpan = interval;
             assignRolesTimer.Interval = interval.TotalMilliseconds;
-            Console.Write("Changed time interval so ");
+            Log("Changed time interval so ");
             userStatRolesRef.AssignRoles(guildRef);
             assignRolesStartTime = DateTime.Now;
             //save assignRolesTimer

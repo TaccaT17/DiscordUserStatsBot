@@ -50,8 +50,9 @@ namespace DiscordUserStatsBot
         public void ChangeRankCriteria(UserStatConfig.RankConfig.RankTimeType newRankTimeType, UserStatsBotController contRef)
         {
             rankConfig.rankTime = newRankTimeType;
-            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig), contRef.GuildRef);
             rankConfig.minAvgDays = (int)rankConfig.rankTime / 2;
+            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig), contRef.GuildRef);
+            myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"minAvgDays is {rankConfig.minAvgDays}"));
         }
         #endregion
 

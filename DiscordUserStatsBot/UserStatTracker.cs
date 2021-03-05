@@ -209,19 +209,22 @@ namespace DiscordUserStatsBot
                 myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $@"Beware: This StatTracker has only recorded the past {userStatsDays.Length} days."));
                 pastNumberOfDays = userStatsDays.Length;
             }
-            //if # of days searching for exceeds # of days since this stat tracker got made, instead return average since stat tracker created or minimum days for average
+            //if # of days searching for exceeds # of days since this stat tracker got made, instead return average since stat tracker created or average since minimum days
             else if ((pastNumberOfDays > (DateTime.Now - dateTrackerCreated).Days))
             {
-                if((DateTime.Now - dateTrackerCreated).Days > 0)
+                pastNumberOfDays = (DateTime.Now - dateTrackerCreated).Days;
+
+                if ((DateTime.Now - dateTrackerCreated).Days <= 0)
                 {
-                    pastNumberOfDays = (DateTime.Now - dateTrackerCreated).Days;
+                    pastNumberOfDays = 1;
                 }
-                
-                if(pastNumberOfDays < myCont.userStatConfigRef.rankConfig.minAvgDays && myCont.userStatConfigRef.rankConfig.minAvgDays < (int)myCont.userStatConfigRef.rankConfig.rankTime)
+
+                //myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"Number of days wanted is {pastNumberOfDays}"));
+
+                if (pastNumberOfDays < myCont.userStatConfigRef.rankConfig.minAvgDays && myCont.userStatConfigRef.rankConfig.minAvgDays < (int)myCont.userStatConfigRef.rankConfig.rankTime)
                 {
                     pastNumberOfDays = myCont.userStatConfigRef.rankConfig.minAvgDays;
                 }
-                
             }
 
             return pastNumberOfDays;
