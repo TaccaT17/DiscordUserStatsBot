@@ -423,11 +423,14 @@ namespace DiscordUserStatsBot
                 int daysCalculatedOver = 0;
                 int amountOfRankMembers = 0;
 
+                bool foundRole = false;
+
                 //find role
                 for (int index = 0; index < myCont.userStatRolesRef.rankRoles.Length; index++)
                 {
                     if (myCont.userStatRolesRef.rankRoles[index].name.ToLower().Equals(roleName.ToLower()))
                     {
+                        foundRole = true;
                         roleName = myCont.userStatRolesRef.rankRoles[index].name;
 
                         //get all the members in that role
@@ -465,9 +468,9 @@ namespace DiscordUserStatsBot
                         index = myCont.userStatRolesRef.rankRoles.Length;
                     }
                 }
-
-                //TODO: error code if doesnt find any role with given name
-
+                
+                if (foundRole)
+                {
                 TimeSpan VCAvg = Average(VCAvgs);
 
                 message.Channel.SendMessageAsync($"__**{roleName} Stats**__:\n" +
@@ -483,6 +486,12 @@ namespace DiscordUserStatsBot
                                                                             $"{VCAvg.Hours} hours, " +
                                                                             $"{VCAvg.Minutes} minutes and " +
                                                                             $"{VCAvg.Seconds} seconds!**");
+                }
+                //Error if doesnt find any role with given name
+                else
+                {
+                    message.Channel.SendMessageAsync($@"Sorry there is no rankrole named '{roleName}'.");
+                }
             }
 
             //COMMANDS THAT REQUIRE PERMISSIONS
@@ -644,6 +653,18 @@ namespace DiscordUserStatsBot
             //------------------------------------------
             //--------------------------------------------------------------------------------------------------
             #endregion
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Intro message to get users started with the bot.
+        /// </summary>
+        /// <param name="guild"></param>
+        /// <returns></returns>
+        public Task IntroMessage(SocketGuild guild)
+        {
+            guild.DefaultChannel.SendMessageAsync($@"Hi! Type '{BotCommandPrefix}{helpCommand}' for a list of bot commands.");
 
             return Task.CompletedTask;
         }

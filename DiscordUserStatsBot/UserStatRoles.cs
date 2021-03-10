@@ -11,7 +11,7 @@ namespace DiscordUserStatsBot
     //Note: USE REST WHEN SENDING REQUEST, USE WEBSOCKET WHEN
 
 
-    class UserStatsRoles
+    class UserStatRoles
     {
 
         #region VARIABLES
@@ -39,7 +39,7 @@ namespace DiscordUserStatsBot
         #endregion
 
         //Constructor
-        public UserStatsRoles(UserStatsBotController myController)
+        public UserStatRoles(UserStatsBotController myController)
         {
             myCont = myController;
         }
@@ -121,6 +121,12 @@ namespace DiscordUserStatsBot
                     if(rankedUserIndex >= rankedUsers.Count || rankedUsers.Count < 1)
                     {
                         //Log("Ran out of users to assign roles to", Discord.LogSeverity.Debug);
+                        return;
+                    }
+                    if (guildRef.GetUser(rankedUsers[rankedUserIndex]) == null)
+                    {
+                        myCont.Log( new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), "Failed to find guild user using SocketGuild.GetUser(ID)."));
+
                         return;
                     }
                     

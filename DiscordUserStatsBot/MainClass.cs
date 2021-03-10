@@ -18,6 +18,8 @@ namespace DiscordUserStatsBot
         private DiscordSocketClient client; //         <--------------------------------THIS IS YOUR REFERENCE TO EVERYTHING
         private bool guildInstancesInitialized;
 
+        private List<UserStatsBotController> guildControllers;
+
         public static string FilePath
         {
             get { return filePath; }
@@ -28,8 +30,6 @@ namespace DiscordUserStatsBot
 
         public async Task MainAsync()
         {
-            //Console.WriteLine("Main called.");
-
             guildInstancesInitialized = false;
 
             DiscordSocketConfig config = new DiscordSocketConfig();
@@ -50,10 +50,14 @@ namespace DiscordUserStatsBot
             // not secure to hardcode token so instead will get it from saved file (under TomsDiscordBot->bin->Debug->netcoreapp3.1)
             Console.WriteLine("token path: " + filePath);
 
-            var token = File.ReadAllText(filePath + @"\token.txt");
+            var token = File.ReadAllText(filePath + Path.DirectorySeparatorChar + @"token.txt");
 
             await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();
+
+            guildControllers = new List<UserStatsBotController>();
+
+            client.JoinedGuild += SetUpNewGuildInstance;
 
             // wait for an indefinite amount of time
             await Task.Delay(-1);
@@ -62,7 +66,7 @@ namespace DiscordUserStatsBot
         private Task Log(LogMessage msg)
         {
             using (System.IO.StreamWriter file =
-            new System.IO.StreamWriter(filePath + @"\logs.txt", true))
+            new System.IO.StreamWriter(filePath + Path.DirectorySeparatorChar + @"logs.txt", true))
             {
                 file.WriteLine(msg.ToString());
             }
@@ -85,12 +89,44 @@ namespace DiscordUserStatsBot
                     guild = guildE.Current;
 
                     UserStatsBotController tempControllerRef = new UserStatsBotController(client, guild);
+
+                    guildControllers.Add(tempControllerRef);
                 }
 
                 guildInstancesInitialized = true;
             }
 
             return Task.CompletedTask;
+        }
+
+        private Task SetUpNewGuildInstance(SocketGuild newGuild)
+        {
+            //make sure doesn't already have instance
+            if (GuildHasExistingInstance(newGuild))
+            {
+                return Task.CompletedTask;
+            }
+
+            UserStatsBotController tempControllerRef = new UserStatsBotController(client, newGuild);
+
+            tempControllerRef.commandHandlerRef.IntroMessage(newGuild);
+
+            Log(new LogMessage(LogSeverity.Info, this.ToString(), $"     Created new guild instance for '{newGuild.Name}'"));
+
+            return Task.CompletedTask;
+        }
+
+        private bool GuildHasExistingInstance(SocketGuild guildToCheck)
+        {
+            foreach (UserStatsBotController cont in guildControllers)
+            {
+                if (cont.GuildRef.Id.Equals(guildToCheck.Id))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
     }

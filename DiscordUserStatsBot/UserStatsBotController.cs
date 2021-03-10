@@ -71,6 +71,7 @@ namespace DiscordUserStatsBot
         //private const ulong TBE_DEBUG_TEXT_CHANNEL_ID = 767845719570382903;
         //private const ulong TBE_DEBUG_VOICE_CHANNEL_ID = 767845719570382904;
 
+        private DiscordSocketClient myClient;
         private SocketGuild guildRef;
         //private SocketTextChannel debugTextChannelRef;
         //private SocketVoiceChannel debugVoiceChannelRef;
@@ -85,8 +86,8 @@ namespace DiscordUserStatsBot
         private bool trackBotStats = false;
 
         public SaveHandler saveHandlerRef;
-        public UserStatsRoles userStatRolesRef;
-        private CommandHandler commandHandlerRef;
+        public UserStatRoles userStatRolesRef;
+        public CommandHandler commandHandlerRef;
         public UserStatConfig userStatConfigRef;
 
         //assign roles timer
@@ -114,54 +115,11 @@ namespace DiscordUserStatsBot
         //--------------------------------------------------------------------------------------------------------------------------------------------------------------- 
         #endregion
 
-
-        #region FUNCTIONS
-        //---------------------------------------------------------------------------------------------------------------------------------------------------------------
-        public void Log(string msg)
-        {
-            //string output = $"{guildRef.Name} - " + "\t" + new LogMessage(LogSeverity.Info, this.ToString(), msg).ToString();
-
-            string output1 = $"{guildRef.Name} - ";
-            string output2 = new LogMessage(LogSeverity.Info, this.ToString(), msg).ToString();
-
-            string output = String.Format("{0,-30}{1,-10}", output1, output2);
-
-            using (System.IO.StreamWriter file =
-            new System.IO.StreamWriter(MainClass.FilePath + @"\logs.txt", true))
-            {
-                file.WriteLine(output);
-            }
-
-            Console.WriteLine(output);
-            return;
-        }
-
-        public void Log(LogMessage msg)
-        {
-            //ignore debugs if not in devmode
-            if(msg.Severity.Equals(LogSeverity.Debug) && !devMode)
-            {
-                return;
-            }
-
-            string output1 = $"{guildRef.Name} - ";
-            string output2 = msg.ToString();
-
-            string output = String.Format("{0,-30}{1,-10}", output1, output2);
-
-            using (System.IO.StreamWriter file =
-            new System.IO.StreamWriter(MainClass.FilePath + @"\logs.txt", true))
-            {
-                file.WriteLine(output);
-            }
-
-            Console.WriteLine(output);
-            return;
-        }
-
-        #region InitFunctions
+        //CONSTRUCTOR
         public UserStatsBotController(DiscordSocketClient client, SocketGuild guild)
         {
+            myClient = client;
+
             //EVENTS
             //-------------------------------------------------------------------------------------------------------------
             client.UserVoiceStateUpdated += VoiceChatChange;
@@ -191,10 +149,10 @@ namespace DiscordUserStatsBot
             }
 
             //make save, roles, command classes
-            if(saveHandlerRef == null)
-            saveHandlerRef = new SaveHandler();
-            if(userStatRolesRef == null)
-            userStatRolesRef = new UserStatsRoles(this);
+            if (saveHandlerRef == null)
+                saveHandlerRef = new SaveHandler();
+            if (userStatRolesRef == null)
+                userStatRolesRef = new UserStatRoles(this);
             if (commandHandlerRef == null)
             {
                 commandHandlerRef = new CommandHandler(this, guildRef);
@@ -203,7 +161,6 @@ namespace DiscordUserStatsBot
                 client.MessageReceived += RecordMessageSent;
                 commandHandlerRef.wasBotCommand = false;
             }
-
 
             LoadAllBotInfo();
 
@@ -247,6 +204,50 @@ namespace DiscordUserStatsBot
             Log("Bot set up");
         }
 
+        #region FUNCTIONS
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------------
+        public void Log(string msg)
+        {
+            //string output = $"{guildRef.Name} - " + "\t" + new LogMessage(LogSeverity.Info, this.ToString(), msg).ToString();
+
+            string output1 = $"{guildRef.Name} - ";
+            string output2 = new LogMessage(LogSeverity.Info, this.ToString(), msg).ToString();
+
+            string output = String.Format("{0,-30}{1,-10}", output1, output2);
+
+            using (System.IO.StreamWriter file =
+            new System.IO.StreamWriter(MainClass.FilePath + Path.DirectorySeparatorChar + @"logs.txt", true))
+            {
+                file.WriteLine(output);
+            }
+
+            Console.WriteLine(output);
+            return;
+        }
+
+        public void Log(LogMessage msg)
+        {
+            //ignore debugs if not in devmode
+            if(msg.Severity.Equals(LogSeverity.Debug) && !devMode)
+            {
+                return;
+            }
+
+            string output1 = $"{guildRef.Name} - ";
+            string output2 = msg.ToString();
+
+            string output = String.Format("{0,-30}{1,-10}", output1, output2);
+
+            using (System.IO.StreamWriter file =
+            new System.IO.StreamWriter(MainClass.FilePath + Path.DirectorySeparatorChar + @"logs.txt", true))
+            {
+                file.WriteLine(output);
+            }
+
+            Console.WriteLine(output);
+            return;
+        }
+
         private Task Disconnect(Exception exception) //what about crashes???
         {
             //go through users in chat list and call stopRecord()
@@ -259,7 +260,6 @@ namespace DiscordUserStatsBot
 
             return Task.CompletedTask;
         }
-        #endregion
 
         #region RecordStatsFunctions
         private Task VoiceChatChange(SocketUser user, SocketVoiceState PreviousVoiceChat, SocketVoiceState CurrentVoiceChat)
@@ -492,21 +492,20 @@ namespace DiscordUserStatsBot
 
             if (usersWithName > 1)
             {
-                Log(new LogMessage(LogSeverity.Debug, this.ToString(), $"Found multiple users with same name '{foundUser}' : getuserstat"));
+                Log(new LogMessage(LogSeverity.Debug, this.ToString(), $"Found multiple users with same name '{foundUser}'"));
                 return userStatInst;
             }
-            else
+            else if (usersWithName == 1)
             {
                 userName = foundUser;
-            }
-
-            if (guildUserNameToIDIndex.ContainsKey(userName))
-            {
-                userStatInst = guildUserIDToStatIndex[guildUserNameToIDIndex[userName]];
+                if (guildUserNameToIDIndex.ContainsKey(userName))
+                {
+                    userStatInst = guildUserIDToStatIndex[guildUserNameToIDIndex[userName]];
+                }
             }
             else
             {
-                Log(new LogMessage(LogSeverity.Debug, this.ToString(), $"The bot has no recording of a user with that name '{userName}': userstat"));
+                Log(new LogMessage(LogSeverity.Debug, this.ToString(), $"Search for UserStats: The bot has no recording of a user with that name '{userName}'"));
             }
 
 
@@ -565,21 +564,20 @@ namespace DiscordUserStatsBot
 
             if (usersWithName > 1)
             {
-                Log(new LogMessage(LogSeverity.Debug, this.ToString(), $"Found multiple entries with same id '{foundUser}' : ID"));
+                Log(new LogMessage(LogSeverity.Debug, this.ToString(), $"Found multiple entries with same id '{foundUser}'"));
                 return userID;
             }
-            else
+            else if (usersWithName == 1)
             {
                 userName = foundUser;
-            }
-                
-            if (guildUserNameToIDIndex.ContainsKey(userName))
-            {
-                userID = guildUserNameToIDIndex[userName];
+                if (guildUserNameToIDIndex.ContainsKey(userName))
+                {
+                    userID = guildUserNameToIDIndex[userName];
+                }
             }
             else
             {
-                Log(new LogMessage(LogSeverity.Debug, this.ToString(), $"Search for ID: The bot has no recording of a user with that name: {userName}"));
+                Log(new LogMessage(LogSeverity.Debug, this.ToString(), $"Search for ID: The bot has no recording of a user with that name: '{userName}'"));
             }
 
             return userID;

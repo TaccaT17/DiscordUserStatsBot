@@ -11,14 +11,6 @@ namespace DiscordUserStatsBot
 
         private UserStatsBotController myCont;
 
-        /*public UserStatConfig()
-        {
-            if (!rankConfig.initialized)
-            {
-                DefaultRankConfig();
-            }
-        }*/
-
         public UserStatConfig(UserStatsBotController controller)
         {
             myCont = controller;
