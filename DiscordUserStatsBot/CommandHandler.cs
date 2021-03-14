@@ -50,6 +50,7 @@ namespace DiscordUserStatsBot
         public bool wasBotCommand;
 
         IEmote emoteClap;
+        IEmote emoteDonate;
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion
 
@@ -61,6 +62,7 @@ namespace DiscordUserStatsBot
             guildRef = guildReference;
 
             emoteClap = new Emoji("👏");
+            emoteDonate = new Emoji("🤗");
         }
 
         #region CommandFunctions
@@ -127,9 +129,9 @@ namespace DiscordUserStatsBot
             //HI
             if (command.Equals(greetCommand.ToLower()))
             {
-                message.Channel.SendMessageAsync("Hello fellow user.");
-                message.Channel.SendMessageAsync("Whalecome...");
-                message.Channel.SendMessageAsync($"Type '{botCommandPrefix}help' for a list of bot commands.");
+                message.Channel.SendMessageAsync("Hello fellow user! \n" +
+                    $"**Type '{botCommandPrefix}{helpCommand}' for a list of bot commands.** \n" +
+                    $"Support My Creator @ https://ko-fi.com/tomthedoer {emoteDonate}");
                 return Task.CompletedTask;
             }
             else if (command.Equals(aboutCommand.ToLower()))
@@ -137,11 +139,12 @@ namespace DiscordUserStatsBot
                 EmbedBuilder builder = new EmbedBuilder();
                 builder.WithTitle("About User Stats Bot");
 
-                builder.AddField("The goal of the StatTracker bot is to create a more organized sidebar so active users appear near the top. \n\n",
-                    "**The bot does this by doing two things:** \n    **1.** It records active users' guild (AKA server) activity over the past month (their time in chat + messages sent). \n" +
-                                                 "    **2.** It assigns users a rank and corresponding role based off of their activity.\n\n" +
+                builder.AddField("The StatTracker bot creates a more organized sidebar by putting active users near the top. \n\n",
+                    "**The bot does this by doing two things:** \n    **1.** It records users' guild (AKA server) activity over the past month (their time in chat + messages sent). \n" +
+                                                 "    **2.** It assigns users a corresponding 'RankRole' based off of their activity.\n\n" +
                                                  "*You have the option to turn off the sidebar organization if you just want a bit of fun comparing stats with your friends.*");
-                builder.WithFooter(footer => footer.Text = $"Type '{botCommandPrefix}{helpCommand}' for a list of bot commands.");
+                builder.AddField($"Type '{botCommandPrefix}{helpCommand}' for a list of bot commands.", $"[Support My Creator {emoteDonate}](https://ko-fi.com/tomthedoer)");
+                //builder.WithFooter(footer => footer.Text = $"Type '{botCommandPrefix}{helpCommand}' for a list of bot commands.");
 
                 message.Channel.SendMessageAsync("", false, builder.Build());
 
@@ -184,6 +187,8 @@ namespace DiscordUserStatsBot
                     builder.AddField(botCommandPrefix + changeRankCriteria + " *<Criteria>*", "Sets what criteria people are ranked by. *Admin only*\n" +
                         "                     Criteria can be: messages(*Msg*), voice chat(*Vc*) or both(*Msg&Vc*). average (*Avg*) or totals(*Total*). month(*Month*), week(*Week*), or day(*Day*).\n");
                 }
+
+                builder.AddField("------------------------------------------------", $"[Support My Creator {emoteDonate}](https://ko-fi.com/tomthedoer)");
 
                 message.Channel.SendMessageAsync("", false, builder.Build());
                 /*
@@ -664,7 +669,7 @@ namespace DiscordUserStatsBot
         /// <returns></returns>
         public Task IntroMessage(SocketGuild guild)
         {
-            guild.DefaultChannel.SendMessageAsync($@"Hi! Type '{BotCommandPrefix}{helpCommand}' for a list of bot commands.");
+            guild.DefaultChannel.SendMessageAsync($"Hi! Type '{BotCommandPrefix}{helpCommand}' for a list of bot commands. \n [Support My Creator {emoteDonate}](https://ko-fi.com/tomthedoer)");
 
             return Task.CompletedTask;
         }

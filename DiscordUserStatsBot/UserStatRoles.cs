@@ -169,7 +169,8 @@ namespace DiscordUserStatsBot
                     }
                     else
                     {
-                        myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), "This user is inactive therefore not applying a role."));
+                        //don't apply roles to inactive members
+                        //myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), "This user is inactive therefore not applying a role."));
                         rankMemberAmountIteration--;
                     }
 
