@@ -34,7 +34,7 @@ namespace DiscordUserStatsBot
         private string greetCommand = "Hi",
             aboutCommand = "About",
             helpCommand = "Help",
-            prefixCommand = "StatPrefix",
+            prefixCommand = "Prefix",
             getUserStatsCommand = "UserStats",
             getRankStatsCommand = "RankStats",
             setRankTimeIntervalCommand = "SetRankTimeInterval",
@@ -503,18 +503,18 @@ namespace DiscordUserStatsBot
             //PREFIX
             else if (command.Equals(prefixCommand.ToLower()))
             {
-                if (!(((SocketGuildUser)(message.Author)).GuildPermissions.Administrator))
-                {
-                    message.Channel.SendMessageAsync($@"Sorry, you need the {GuildPermission.Administrator} permission to do this");
-                    return Task.CompletedTask;
-                }
-                //if nothing after prefix then print out prefix otherwise set the prefix to 1st character after space
+                //if nothing after prefix then print out prefix otherwise set the prefix to 1st character after space if admin
                 if (stringAfterCommand.Equals(ignoreAfterCommandString))
                 {
                     message.Channel.SendMessageAsync($@"The command prefix for UserStat bot is {botCommandPrefix}");
                 }
                 else
                 {
+                    if (!(((SocketGuildUser)(message.Author)).GuildPermissions.Administrator))
+                    {
+                        message.Channel.SendMessageAsync($@"Sorry, you need the {GuildPermission.Administrator} permission to do this");
+                        return Task.CompletedTask;
+                    }
                     ChangePrefixCommand(message, stringAfterCommand);
                     myCont.Log("Set new prefix");
                     myCont.saveHandlerRef.SaveObject(botCommandPrefix, nameof(CommandHandler.BotCommandPrefix), guildRef);
