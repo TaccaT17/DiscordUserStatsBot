@@ -164,13 +164,10 @@ namespace DiscordUserStatsBot
 
             LoadAllBotInfo();
 
-            //create roles
-            userStatRolesRef.CreateRoles(guildRef);
-
             //start timer
             AssignRolesTimer(assignRolesTimeSpan);
 
-            //calculate/assign user roles
+            //creates/calculates/assigns user roles
             userStatRolesRef.AssignRoles(guildRef);
 
             //get all users currently in chat and put their id's in userInChat list
@@ -248,7 +245,7 @@ namespace DiscordUserStatsBot
             return;
         }
 
-        private Task Disconnect(Exception exception) //what about crashes???
+        private Task Disconnect(Exception exception) 
         {
             //go through users in chat list and call stopRecord()
             for (int userIndex = usersInChat.Count - 1; userIndex >= 0; userIndex--)

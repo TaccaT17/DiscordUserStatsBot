@@ -139,7 +139,7 @@ namespace DiscordUserStatsBot
                 EmbedBuilder builder = new EmbedBuilder();
                 builder.WithTitle("About User Stats Bot");
 
-                builder.AddField("The StatTracker bot creates a more organized sidebar by putting active users near the top. \n\n",
+                builder.AddField("The UserStats bot creates a more organized sidebar by putting active users near the top. \n\n",
                     "**The bot does this by doing two things:** \n    **1.** It records users' guild (AKA server) activity over the past month (their time in chat + messages sent). \n" +
                                                  "    **2.** It assigns users a corresponding 'RankRole' based off of their activity.\n\n" +
                                                  "*You have the option to turn off the sidebar organization if you just want a bit of fun comparing stats with your friends.*");
@@ -669,7 +669,7 @@ namespace DiscordUserStatsBot
         /// <returns></returns>
         public Task IntroMessage(SocketGuild guild)
         {
-            guild.DefaultChannel.SendMessageAsync($"Hi! Type '{BotCommandPrefix}{helpCommand}' for a list of bot commands. \n [Support My Creator {emoteDonate}](https://ko-fi.com/tomthedoer)");
+            guild.DefaultChannel.SendMessageAsync($"Hi! Type '{BotCommandPrefix}{helpCommand}' for a list of bot commands.");
 
             return Task.CompletedTask;
         }

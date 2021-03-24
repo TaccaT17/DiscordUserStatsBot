@@ -72,7 +72,9 @@ namespace DiscordUserStatsBot
             myCont.Log("Assigning Roles");
 
             //check to make sure have all roles
-            CreateRoles(guildRef);
+            
+            CreateUnmadeRoles(guildRef);
+
 
             //if ranked users not initialized then make list from dictionary
             if(rankedUsers == null)
@@ -295,15 +297,17 @@ namespace DiscordUserStatsBot
             return;
         }        
 
-        public void CreateRoles(SocketGuild guildRef)
+        public void CreateUnmadeRoles(SocketGuild guildRef)
         {
             //if role not in array or discord doesn't have it make a whole new role
             for (int index = 0; index < rankRoles.Length; index++)
             {       //if role null or cant find roles in discord with same index
-                if (guildRef.GetRole(rankRoles[index].Id) == null)                           //NULL CHECK? DONT NEED ONE CAUSE STRUCT?
+                if (guildRef.GetRole(rankRoles[index].Id) == null)                           
                 {
                     //create discord role using info in roles array
                     Discord.Rest.RestRole tempRestRole = guildRef.CreateRoleAsync(rankRoles[index].name, null, rankRoles[index].color, true, true).Result;
+
+                    myCont.Log($"RankRole Created: {rankRoles[index].name}");
 
                     //set roles ID to created discord role ID
                     rankRoles[index].Id = tempRestRole.Id;
