@@ -1,4 +1,6 @@
-﻿using Discord.WebSocket;
+﻿//Copyright Tom Crammond 2021
+
+using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
@@ -43,8 +45,6 @@ namespace DiscordUserStatsBot
         [Newtonsoft.Json.JsonProperty]
         private DateTime dateTrackerCreated;
 
-        
-
         //records users stats for each day for the past 30 days. Goes from OldestDay -> NewestDay
         [Newtonsoft.Json.JsonProperty]
         private UserStatDay[] userStatsDays;
@@ -52,8 +52,6 @@ namespace DiscordUserStatsBot
         //these are only used when trying to sort by both messages and vcTime
         public int messageRankPosition;
         public int vcTimeRankPosition;
-
-        //save role ID?
 
         //public getters
         public string UsersFullName

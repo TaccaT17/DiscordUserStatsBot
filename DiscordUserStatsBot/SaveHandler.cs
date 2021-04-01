@@ -1,4 +1,6 @@
-﻿using System;
+﻿//Copyright Tom Crammond 2021
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -105,13 +107,11 @@ namespace DiscordUserStatsBot
                 string jsonDataString = File.ReadAllText(saveFilePath);
                 objectToLoad = JsonConvert.DeserializeObject<T>(jsonDataString);
                 //Console.WriteLine("Loaded!");
-                //return objectToLoad;
             }
             else
             {
                 Console.WriteLine($@"Load file '{nameOfSaveFile}' doesn't exist");
                 objectToLoad = default(T);
-                //return objectToLoad;
             }
         }
 

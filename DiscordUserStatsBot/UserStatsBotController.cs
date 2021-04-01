@@ -1,4 +1,6 @@
-﻿using Discord;
+﻿//Copyright Tom Crammond 2021
+
+using Discord;
 using Discord.Commands;
 using Discord.Net.Queue;
 using Discord.Rest;
@@ -14,67 +16,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 
-
-//CURRENT TASK: 
-
-//Debugging Issues: 
-
-///Completed
-///
-
-///FUTURE TASKS:
-///Make it get the guild it's a part of on start up AKA make it so it deals with multiple guilds at once
-///get specific day of week/month stats
-///Nicknames?
-///When user changes their name this bots connection to the guild doesn't realise this AKA I still get the old name if I ask it to print the SocketGuildUser name. Is fixed when I restart the Bot. Same thing occurs with nickname. If I think a user has changed their name reset connetion?
-///Bug: when role re-created reference to color is lost
-///Make it so that re-made roles are placed in correct spot
-///look up total/average voice chat time/messages for all users in a given role
-///convert iDToUserStat into just a userStat list
-///REWRITE EVERYTHING NOW THAT YOU CAN GET OFFLINE USERS
-///command that stops users from being organized in the sidebar by the rankRoles
-///TODO: Compress GetUserStats and GetUserIDFromName
-///Ensure that when any save file deleted bot can deal with it
-
-//on startup
-//any users that is currently in voice chat
-///1. if user leaves chat and the enter time is not recorded AKA default AKA 0
-///2. 
-///a
-///a
-///a
-///a
-///Person enters chat. They're start time is recorded.
-///bot disconnects
-///person disconnects
-///person reconnects much later
-///bot connects
-///person leaves. Disconnect time recorded.
-///a
-///a
-///a
-///Basically the problem: what do I do if bot doesn't see a user disconnect or reconnect?
-///Solution: 
-///1. when bot connects start record vctime for any users currently in chat
-///2. when bot disconnects stop recording time for any users in chat
-
 namespace DiscordUserStatsBot
 {
     class UserStatsBotController
     {
         #region VARIABLES
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
-        //private bool devMode = true;
-
-        //TODO: make these generic
-        //private const ulong TBE_GUILD_ID = 767845719570382900;
-        //private const ulong TBE_DEBUG_TEXT_CHANNEL_ID = 767845719570382903;
-        //private const ulong TBE_DEBUG_VOICE_CHANNEL_ID = 767845719570382904;
 
         private DiscordSocketClient myClient;
         private SocketGuild guildRef;
-        //private SocketTextChannel debugTextChannelRef;
-        //private SocketVoiceChannel debugVoiceChannelRef;
 
         //dictionaries that record users and their corresponding UserStats
         public Dictionary<ulong, UserStatTracker> guildUserIDToStatIndex;
@@ -94,9 +44,6 @@ namespace DiscordUserStatsBot
         private System.Timers.Timer assignRolesTimer;
         private TimeSpan assignRolesTimeSpan;
         private DateTime assignRolesStartTime;
-
-        //[Newtonsoft.Json.JsonProperty]
-        //private UserStatTracker.RankConfig rankConfigSave;
 
         public bool inactiveUsersLoseAllRoles = true;
 
@@ -187,17 +134,6 @@ namespace DiscordUserStatsBot
 
             SaveAllBotInfo();
 
-            /*SocketGuildUser user;
-            IEnumerator<SocketGuildUser> userE = guildRef.Users.GetEnumerator();
-
-            Console.WriteLine("GUILD USERS:");
-            while (userE.MoveNext())
-            {
-                user = userE.Current;
-
-                Console.WriteLine($@"   User in guild: {user.Username}");
-            }*/
-
             Log("Bot set up");
         }
 
@@ -277,11 +213,11 @@ namespace DiscordUserStatsBot
                 return Task.CompletedTask;
             }
 
-            if (CurrentVoiceChat.VoiceChannel != null)
+            if (CurrentVoiceChat.VoiceChannel != null && PreviousVoiceChat.VoiceChannel == null)
             {
                 UserJoinedAVoiceChat((SocketGuildUser)user);
             }
-            else
+            else if (CurrentVoiceChat.VoiceChannel == null && PreviousVoiceChat.VoiceChannel != null)
             {
                 UserLeftAllVoiceChats((SocketGuildUser)user);
             }
@@ -580,8 +516,6 @@ namespace DiscordUserStatsBot
             return userID;
         }
 
-        //TODO: bug where user is retaining old name in userstattracker
-
         /// <summary>
         /// Searches for user who changed their name. Stops and returns true if it finds a user who changed their name.
         /// </summary>
@@ -673,34 +607,6 @@ namespace DiscordUserStatsBot
             }
 
             return userInChat;
-
-            /*SocketVoiceChannel voiceChannel;
-            IEnumerator<SocketVoiceChannel> voiceChannelE = guildRef.VoiceChannels.GetEnumerator();
-
-            while (voiceChannelE.MoveNext())
-            {
-                voiceChannel = voiceChannelE.Current;
-
-                SocketUser userInVC;
-
-                IEnumerator<SocketUser> userInVC_E = voiceChannel.Users.GetEnumerator();
-
-                while (userInVC_E.MoveNext())
-                {
-                    userInVC = userInVC_E.Current;
-
-                    //Console.WriteLine($@"Chat: {voiceChannel.Name} Chat user username: {userLoop.Username}");
-
-                    //check to see if the user in chat is the same as the user being asked about
-                    if (userInVC.Id.Equals(userInQuestion.Id))
-                    {
-                        //Console.WriteLine("Matching user in chat");
-                        return true;
-                    }
-                }
-            }
-            */
-            //Console.WriteLine("No matching user in chat");
         }
 
         #region TimerFunctions
@@ -742,12 +648,7 @@ namespace DiscordUserStatsBot
         }
         #endregion
 
-        #region MiscFunctions
-        public string GetUserNamePlusDiscrim(SocketGuildUser guildUser)
-        {
-            return guildUser.Username + '#' + guildUser.Discriminator;
-        }
-
+        #region Save/Load Functions
         private Task SaveRolesSub(SocketRole roleBefore, SocketRole roleAfter)
         {
             //return if not correct guild
@@ -854,6 +755,11 @@ namespace DiscordUserStatsBot
         }
 
         #endregion
+     
+        public string GetUserNamePlusDiscrim(SocketGuildUser guildUser)
+        {
+            return guildUser.Username + '#' + guildUser.Discriminator;
+        }
 
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion

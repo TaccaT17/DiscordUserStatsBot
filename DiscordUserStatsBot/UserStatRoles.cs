@@ -1,4 +1,6 @@
-﻿using Discord.WebSocket;
+﻿//Copyright Tom Crammond 2021
+
+using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -18,7 +20,7 @@ namespace DiscordUserStatsBot
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-        //NOTE: "Discord Role" refers to role that is saved by discord, "UserStat Role" refers to a struct that contains the relevant info to save for that role
+        //NOTE: "Discord Role" refers to role that is saved by discord, "UserStatRole" refers to a struct that contains the relevant info to save for that role
 
         //roles ordered highest esteem to lowest
         public UserStatRole[] rankRoles;

@@ -1,4 +1,6 @@
-﻿using Discord;
+﻿//Copyright Tom Crammond 2021
+
+using Discord;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;

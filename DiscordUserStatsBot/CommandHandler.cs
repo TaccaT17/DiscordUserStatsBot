@@ -1,4 +1,6 @@
-﻿using Discord;
+﻿//Copyright Tom Crammond 2021
+
+using Discord;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
@@ -148,14 +150,6 @@ namespace DiscordUserStatsBot
 
                 message.Channel.SendMessageAsync("", false, builder.Build());
 
-                /*
-                message.Channel.SendMessageAsync("The goal of the StatTracker bot is to create a more organized sidebar so active users appear near the top. \n" +
-                                                 "The bot does this by doing two things: \n" + 
-                                                 "    **1.** It records active users' guild (AKA server) activity over the past month (their time in chat + messages sent). \n" + 
-                                                 "    **2.** It assigns users a rank and corresponding role based off of their activity.\n" +
-                                                 "You have the option to turn off the sidebar organization if you just want a bit of fun comparing stats with your friends.\n" +
-                                                 $"Type '{botCommandPrefix}{helpCommand}' for a list of bot commands.");
-                */
                 return Task.CompletedTask;
             }
             else if (command.Equals(helpCommand.ToLower()))
@@ -191,25 +185,7 @@ namespace DiscordUserStatsBot
                 builder.AddField("------------------------------------------------", $"[Support My Creator {emoteDonate}](https://ko-fi.com/tomthedoer)");
 
                 message.Channel.SendMessageAsync("", false, builder.Build());
-                /*
-                message.Channel.SendMessageAsync("**Commands**:\n" +
-                    $"*(current botPrefix is '{botCommandPrefix}')*\n" +
-                    "--------------------------------------------------------\n" +
-                    "- **" + greetCommand + "**" + " : the bot greets you.\n" +
-                    "- **" + aboutCommand + "**" + " : about this bot.\n" +
-                    "- **" + helpCommand + "**" + " : a list of bot commands.\n" +
-                    "- **" + prefixCommand + "**" + " *(<newPrefix>)* : get the botPrefix OR (optional) change it. *Admin only*\n" +
-                    "--------------------------------------------------------\n" +
-                    "- **" + botInfoCommand + "**" + " : gives relevant bot configuration information.\n" +
-                    "- **" + getUserStatsCommand + "**" + " *<username(#0000)>* : get a given user's rank and  stats.\n" +
-                    "--------------------------------------------------------\n" +
-                    "- **" + updateRanksCommand + "**" + " : recalculates everyones rank.\n" +
-                    "- **" + setRankTimeIntervalCommand + "**" + " *<hours>* : change time interval between when users ranks are calculated. *By default is 1 hour*. This command resets the timer. *Admin only*\n" +
-                    "- **" + setRankMemberLimitCommand + "**" + " *<RankRole>, <Amount>* : changes the number of users in a RankRole to the given Amount. Use '0' to disable the role. *Admin only*\n" +
-                    "- **" + changeRankCriteria + "**" + " *<criteria>* : sets what criteria people are ranked by. *Admin only*\n" +
-                    "                     Criteria can be: messages(*Msg*), voice chat(*Vc*) or both(*Msg&Vc*). average (*Avg*) or totals(*Total*). month(*Month*), week(*Week*), or day(*Day*).\n" +
-                    "");
-                */
+
                 return Task.CompletedTask;
             }
             else if (command.Equals(botInfoCommand.ToLower()))
@@ -258,16 +234,6 @@ namespace DiscordUserStatsBot
                     rankTime = "Day";
                 }
 
-                /*
-                //returns bot info
-                message.Channel.SendMessageAsync($"Bot info: \n" +
-                    $"- Bot command prefix: **{botCommandPrefix}** \n" +
-                    $"- Assign ranks time interval: **{myCont.GetAssignRolesInterval().ToString(@"dd\.hh\:mm\:ss")}** \n" +
-                    $"- When ranks will be recalculated: **{(myCont.GetAssignRolesTimerStart() + myCont.GetAssignRolesInterval()).ToString()}** \n" +
-                    $"- Users ranked by: **{rankBy} {rankType}** in the past **{rankTime}**.\n" + 
-                    $"- Rank roles: {roleNames}");
-                */
-
                 EmbedBuilder builder = new EmbedBuilder();
 
                 builder.WithTitle($"Bot Config Info:");
@@ -304,11 +270,9 @@ namespace DiscordUserStatsBot
                         continue;
                     }
 
-                    //TODO: if totals use those instead
-
                     rankTime = stats.DetermineDays((int)myCont.userStatConfigRef.rankConfig.rankTime);
 
-                    //if avg
+                    //present averages or totals
                     if (myCont.userStatConfigRef.rankConfig.rankBy.Equals(UserStatConfig.RankConfig.RankByType.average))
                     {
                         builder.AddField($"Rank {rank} : {stats.UsersFullName}", $"Days calculated: {rankTime} \n Avg Msgs: {stats.AverageMessages(rankTime).ToString("0.00")} \n Avg VC: {stats.AverageChatTime(rankTime).ToString(@"dd\.hh\:mm\:ss")}");
@@ -498,8 +462,11 @@ namespace DiscordUserStatsBot
                     message.Channel.SendMessageAsync($@"Sorry there is no rankrole named '{roleName}'.");
                 }
             }
+            
+            //------------------------------------------
 
             //COMMANDS THAT REQUIRE PERMISSIONS
+            //------------------------------------------
             //PREFIX
             else if (command.Equals(prefixCommand.ToLower()))
             {
