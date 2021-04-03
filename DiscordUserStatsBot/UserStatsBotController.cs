@@ -117,24 +117,14 @@ namespace DiscordUserStatsBot
             //creates/calculates/assigns user roles
             userStatRolesRef.AssignRoles(guildRef);
 
-            //get all users currently in chat and put their id's in userInChat list
-            //go through userInChat list and call startRecord()
-
-            GetUsersInChat(out usersInChat);
-
-            foreach (SocketUser user in usersInChat)
-            {
-                if (!(guildUserIDToStatIndex.ContainsKey(user.Id)))
-                {
-                    AddNewUserToStatBotIndex(user);
-                }
-
-                StartRecordingVCTime(user);
-            }
-
             SaveAllBotInfo();
 
             Log("Bot set up");
+
+            Connect();
+
+            client.Ready += Connect;
+
         }
 
         #region FUNCTIONS
@@ -181,8 +171,33 @@ namespace DiscordUserStatsBot
             return;
         }
 
+        private Task Connect()
+        {
+            //get all users currently in chat and put their id's in userInChat list
+            //go through userInChat list and call startRecord()
+
+            GetUsersInChat(out usersInChat);
+
+            foreach (SocketUser user in usersInChat)
+            {
+                if (!(guildUserIDToStatIndex.ContainsKey(user.Id)))
+                {
+                    AddNewUserToStatBotIndex(user);
+                }
+
+                StartRecordingVCTime(user);
+            }
+
+            return Task.CompletedTask;
+        }
+
         private Task Disconnect(Exception exception) 
         {
+            if(usersInChat == null)
+            {
+                return Task.CompletedTask;
+            }
+
             //go through users in chat list and call stopRecord()
             for (int userIndex = usersInChat.Count - 1; userIndex >= 0; userIndex--)
             {
@@ -233,7 +248,7 @@ namespace DiscordUserStatsBot
             tempUserStatsRef.RecordGuildUserEnterVoiceChatTime();
 
             //if user not in userInChat list add them
-            if (!(usersInChat.Contains(user)))
+            if (usersInChat != null && !(usersInChat.Contains(user)))
             {
                 usersInChat.Add(user);
             }
@@ -248,7 +263,7 @@ namespace DiscordUserStatsBot
             saveHandlerRef.SaveDictionary(guildUserIDToStatIndex, nameof(guildUserIDToStatIndex), guildRef);
 
             //if user in userInChat list remove them
-            if (usersInChat.Contains(user))
+            if (usersInChat != null && usersInChat.Contains(user))
             {
                 usersInChat.Remove(user);
             }

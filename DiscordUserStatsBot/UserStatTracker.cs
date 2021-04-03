@@ -102,7 +102,7 @@ namespace DiscordUserStatsBot
         public void RecordGuildUserEnterVoiceChatTime()
         {
             lastTimeEnteredVC = DateTime.Now;
-            myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"{usersFullName} entered chat at {lastTimeLeftVC}."));
+            myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"{usersFullName} entered chat at {lastTimeEnteredVC}."));
         }
 
         public void RecordGuildUserLeaveVoiceChatTime()

@@ -132,8 +132,7 @@ namespace DiscordUserStatsBot
             if (command.Equals(greetCommand.ToLower()))
             {
                 message.Channel.SendMessageAsync("Hello fellow user! \n" +
-                    $"**Type '{botCommandPrefix}{helpCommand}' for a list of bot commands.** \n" +
-                    $"Support My Creator @ https://ko-fi.com/tomthedoer {emoteDonate}");
+                    $"**Type '{botCommandPrefix}{helpCommand}' for a list of bot commands.**");
                 return Task.CompletedTask;
             }
             else if (command.Equals(aboutCommand.ToLower()))
@@ -238,7 +237,7 @@ namespace DiscordUserStatsBot
 
                 builder.WithTitle($"Bot Config Info:");
                 builder.AddField($"{botCommandPrefix}", "Bot command prefix");
-                builder.AddField($"{myCont.GetAssignRolesInterval().ToString(@"dd\.hh\:mm\:ss")}", "Assign ranks time interval");
+                builder.AddField($"{myCont.GetAssignRolesInterval().ToString(@"dd\.hh\:mm\:ss") + " GMT"}", "Assign ranks time interval");
                 builder.AddField($"{(myCont.GetAssignRolesTimerStart() + myCont.GetAssignRolesInterval()).ToString()}", "When ranks will be recalculated");
                 builder.AddField($"------------------------------------------------", $"Users ranked by: **{rankBy} {rankType}** in the past **{rankTime}**.");
                 builder.AddField($"Rank roles", $"{roleNames}");
