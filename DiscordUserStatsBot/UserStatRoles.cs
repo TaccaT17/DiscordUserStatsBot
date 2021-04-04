@@ -73,8 +73,15 @@ namespace DiscordUserStatsBot
         {
             myCont.Log("Assigning Roles");
 
+            //ensure permission
+            if (!guildRef.CurrentUser.GuildPermissions.ManageRoles || 
+                !guildRef.CurrentUser.GuildPermissions.AddReactions)
+            {
+                myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), "Can't assign roles because lacks permissions."));
+                return;
+            }
+
             //check to make sure have all roles
-            
             CreateUnmadeRoles(guildRef);
 
 
@@ -116,10 +123,32 @@ namespace DiscordUserStatsBot
 
             RankUsers();
 
+            //get highest position bot role
+            int maxBotRolePos = 0;
+            SocketRole botRole;
+            IEnumerator<SocketRole> botRoleE = guildRef.CurrentUser.Roles.GetEnumerator();
+            while (botRoleE.MoveNext())
+            {
+                botRole = botRoleE.Current;
+
+                if (maxBotRolePos < botRole.Position)
+                {
+                    maxBotRolePos = botRole.Position;
+                }
+            }
+
             //go through roleList and give each role appropriate users
             int rankedUserIndex = 0;
             for (int rankRole = 0; rankRole < rankRoles.Length; rankRole++)
             {
+                //ensure bot has high enough position to move this RankRole
+                //if position of this bot role is less than the role about to impact then skip this role
+                if(rankRoles[rankRole].position > maxBotRolePos)
+                {
+                    myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), $"BEWARE: Bot role not above generated RankRole: {rankRoles[rankRole].name}"));
+                    await guildRef.DefaultChannel.SendMessageAsync($"Beware: Bot role must be above '{rankRoles[rankRole].name}' role for bot to fully function.");
+                    continue;
+                }
                 for (int rankMemberAmountIteration = 0; rankMemberAmountIteration < rankRoles[rankRole].memberLimit; rankMemberAmountIteration++)
                 {
                     if(rankedUserIndex >= rankedUsers.Count || rankedUsers.Count < 1)
@@ -135,17 +164,23 @@ namespace DiscordUserStatsBot
                     }
                     
                     //iterate though given users roles
-                    SocketRole usersExistingRoles;
+                    SocketRole usersExistingRole;
                     IEnumerator<SocketRole> userExistingRoleE = guildRef.GetUser(rankedUsers[rankedUserIndex]).Roles.GetEnumerator();
                     bool alreadyHasRole = false;
                     userExistingRoleE.MoveNext();  //skip @everyone role
                     bool userActive = UserIsActive(rankedUsers[rankedUserIndex]);
                     while (userExistingRoleE.MoveNext())
                     {
-                        usersExistingRoles = userExistingRoleE.Current;
+                        usersExistingRole = userExistingRoleE.Current;
+
+                        if (usersExistingRole.Position > maxBotRolePos)
+                        {
+                            //skip here too (bot not high enough role position)
+                            continue;
+                        }
 
                         //if user already has role you are good and is active
-                        if (usersExistingRoles.Id.Equals(rankRoles[rankRole].Id) && userActive)
+                        if (usersExistingRole.Id.Equals(rankRoles[rankRole].Id) && userActive)
                         {
                             alreadyHasRole = true;
                         }
@@ -155,7 +190,7 @@ namespace DiscordUserStatsBot
                         {
                             for (int role = 0; role < rankRoles.Length; role++)
                             {
-                                if (usersExistingRoles.Id.Equals(rankRoles[role].Id))
+                                if (usersExistingRole.Id.Equals(rankRoles[role].Id))
                                 {
                                     await guildRef.GetUser(rankedUsers[rankedUserIndex]).RemoveRoleAsync(guildRef.GetRole(rankRoles[role].Id));
                                 }
@@ -306,13 +341,13 @@ namespace DiscordUserStatsBot
             {       //if role null or cant find roles in discord with same index
                 if (guildRef.GetRole(rankRoles[index].Id) == null)                           
                 {
-                    //create discord role using info in roles array
                     Discord.Rest.RestRole tempRestRole = guildRef.CreateRoleAsync(rankRoles[index].name, null, rankRoles[index].color, true, true).Result;
 
                     myCont.Log($"RankRole Created: {rankRoles[index].name}");
 
                     //set roles ID to created discord role ID
                     rankRoles[index].Id = tempRestRole.Id;
+
                 }
             }
             return;

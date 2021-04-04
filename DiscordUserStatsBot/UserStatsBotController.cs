@@ -111,6 +111,14 @@ namespace DiscordUserStatsBot
 
             LoadAllBotInfo();
 
+            //ensure has permissions
+            if (!HasPermissions())
+            {
+                Log(new LogMessage(LogSeverity.Warning, this.ToString(), "Bot is lacking relevant permissions. "));
+                guildRef.DefaultChannel.SendMessageAsync("WARNING: I don't have the permissions I need to work...");
+                return;
+            }
+            
             //start timer
             AssignRolesTimer(assignRolesTimeSpan);
 
@@ -169,6 +177,48 @@ namespace DiscordUserStatsBot
 
             Console.WriteLine(output);
             return;
+        }
+
+        public bool HasPermissions()
+        {
+            bool hasPermissions = true;
+
+            if (!guildRef.CurrentUser.GuildPermissions.ManageRoles)
+            {
+                Log(new LogMessage(LogSeverity.Warning, this.ToString(), "ManageRoles"));
+                hasPermissions = false;
+            }
+            if (!guildRef.CurrentUser.GuildPermissions.AddReactions)
+            {
+                Log(new LogMessage(LogSeverity.Warning, this.ToString(), "AddReactions"));
+                hasPermissions = false;
+            }
+            if (!guildRef.CurrentUser.GuildPermissions.ViewChannel)
+            {
+                Log(new LogMessage(LogSeverity.Warning, this.ToString(), "ViewChannel"));
+                hasPermissions = false;
+            }
+            if (!guildRef.CurrentUser.GuildPermissions.SendMessages)
+            {
+                Log(new LogMessage(LogSeverity.Warning, this.ToString(), "SendMessages"));
+                hasPermissions = false;
+            }
+            if (!guildRef.CurrentUser.GuildPermissions.UseVAD)
+            {
+                Log(new LogMessage(LogSeverity.Warning, this.ToString(), "UseVAD"));
+                hasPermissions = false;
+            }
+            if (!guildRef.CurrentUser.GuildPermissions.ReadMessageHistory)
+            {
+                Log(new LogMessage(LogSeverity.Warning, this.ToString(), "ReadMessageHistory"));
+                hasPermissions = false;
+            }
+            if (!hasPermissions)
+            {
+                Log(new LogMessage(LogSeverity.Warning, this.ToString(), "^ Missing Permissions ^"));
+            }
+
+            return hasPermissions;
         }
 
         private Task Connect()
@@ -612,6 +662,11 @@ namespace DiscordUserStatsBot
         {
             bool userInChat = false;
 
+            if (usersInChat == null)
+            {
+                return false;
+            }
+
             for (int index = 0; index < usersInChat.Count; index++)
             {
                 if (usersInChat[index].Id.Equals(userInQuestion.Id)) 
@@ -662,6 +717,8 @@ namespace DiscordUserStatsBot
             return assignRolesStartTime;
         }
         #endregion
+
+
 
         #region Save/Load Functions
         private Task SaveRolesSub(SocketRole roleBefore, SocketRole roleAfter)

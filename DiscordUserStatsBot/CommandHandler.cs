@@ -53,6 +53,7 @@ namespace DiscordUserStatsBot
 
         IEmote emoteClap;
         IEmote emoteDonate;
+        IEmote emoteSad = new Emoji("😢");
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion
 
@@ -71,6 +72,15 @@ namespace DiscordUserStatsBot
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         public Task CommandHandlerFunc(SocketMessage message)          //REMEMBER ALL COMMANDS MUST BE LOWERCASE
         {
+            //Permission Check
+            if (!guildRef.CurrentUser.GuildPermissions.SendMessages || 
+                !guildRef.CurrentUser.GuildPermissions.ViewChannel ||
+                !guildRef.CurrentUser.GuildPermissions.ReadMessageHistory)
+            {
+                myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), "Can't execute commands because lacks permissions."));
+                return Task.CompletedTask;
+            }
+
             #region MessageFilter
             //--------------------------------------------------------------------------------------------------
             //rule out messages that don't have bot prefix
@@ -99,6 +109,11 @@ namespace DiscordUserStatsBot
             #endregion
 
             wasBotCommand = true;
+
+            if (!myCont.HasPermissions())
+            {
+                guildRef.DefaultChannel.SendMessageAsync("Beware: Bot won't fully function because lacking permissions... " + emoteSad);
+            }
 
             #region GetMessageCommandString
             //--------------------------------------------------------------------------------------------------
@@ -175,11 +190,14 @@ namespace DiscordUserStatsBot
                 builder.AddField(botCommandPrefix + updateRanksCommand, "Recalculates everyones rank.");
                 if (((SocketGuildUser)(message.Author)).GuildPermissions.Administrator)
                 {
-                    builder.AddField(botCommandPrefix + setRankTimeIntervalCommand + " *<hours>* ", "Change time interval between when users ranks are calculated. *By default is 24 hours*. This command resets the timer. *Admin only*");
-                    builder.AddField(botCommandPrefix + setRankMemberLimitCommand + " *<RankRole>, <Amount>* ", "changes the number of users in a RankRole to the given Amount. Use '0' to disable the role. *Admin only*");
-                    builder.AddField(botCommandPrefix + changeRankCriteria + " *<Criteria>*", "Sets what criteria people are ranked by. *Admin only*\n" +
+                    builder.AddField("------------------------------------------------", $"__**Admin Only**__: ");
+                    builder.AddField(botCommandPrefix + setRankTimeIntervalCommand + " *<hours>* ", "Change time interval between when users ranks are calculated. *By default is 24 hours*. This command resets the timer.");
+                    builder.AddField(botCommandPrefix + setRankMemberLimitCommand + " *<RankRole>, <Amount>* ", "changes the number of users in a RankRole to the given Amount. Use '0' to disable the role.");
+                    builder.AddField(botCommandPrefix + changeRankCriteria + " *<Criteria>*", "Sets what criteria people are ranked by.\n" +
                         "                     Criteria can be: messages(*Msg*), voice chat(*Vc*) or both(*Msg&Vc*). average (*Avg*) or totals(*Total*). month(*Month*), week(*Week*), or day(*Day*).\n");
                 }
+
+                builder.AddField("------------------------------------------------", $"***Beware**: Bot role must be above generated RankRoles for bot to function*");
 
                 builder.AddField("------------------------------------------------", $"[Support My Creator {emoteDonate}](https://ko-fi.com/tomthedoer)");
 
@@ -237,8 +255,8 @@ namespace DiscordUserStatsBot
 
                 builder.WithTitle($"Bot Config Info:");
                 builder.AddField($"{botCommandPrefix}", "Bot command prefix");
-                builder.AddField($"{myCont.GetAssignRolesInterval().ToString(@"dd\.hh\:mm\:ss") + " GMT"}", "Assign ranks time interval");
-                builder.AddField($"{(myCont.GetAssignRolesTimerStart() + myCont.GetAssignRolesInterval()).ToString()}", "When ranks will be recalculated");
+                builder.AddField($"{myCont.GetAssignRolesInterval().ToString(@"dd\.hh\:mm\:ss")}", "Assign ranks time interval");
+                builder.AddField($"{(myCont.GetAssignRolesTimerStart() + myCont.GetAssignRolesInterval()).ToString() + " GMT"}", "When ranks will be recalculated");
                 builder.AddField($"------------------------------------------------", $"Users ranked by: **{rankBy} {rankType}** in the past **{rankTime}**.");
                 builder.AddField($"Rank roles", $"{roleNames}");
 
@@ -627,6 +645,8 @@ namespace DiscordUserStatsBot
 
             return Task.CompletedTask;
         }
+
+
 
         /// <summary>
         /// Intro message to get users started with the bot.
