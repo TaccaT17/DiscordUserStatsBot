@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace DiscordUserStatsBot
 {
-    class UserStatTracker: IComparable<UserStatTracker>
+    public class UserStatTracker: IComparable<UserStatTracker>
     {
         //Will log stats up to the last 30 days
 
@@ -86,6 +86,8 @@ namespace DiscordUserStatsBot
                 dTSetUp = dTSetUp.AddDays(-1);
             }
 
+            Console.WriteLine("UserStatTracker initialized");
+
             dateTrackerCreated = DateTime.Now;
             //AddFakeData();
         }
@@ -102,7 +104,7 @@ namespace DiscordUserStatsBot
         public void RecordGuildUserEnterVoiceChatTime()
         {
             lastTimeEnteredVC = DateTime.Now;
-            myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"{usersFullName} entered chat at {lastTimeEnteredVC}."));
+            myCont.DIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"{usersFullName} entered chat at {lastTimeEnteredVC}."));
         }
 
         public void RecordGuildUserLeaveVoiceChatTime()
@@ -117,7 +119,7 @@ namespace DiscordUserStatsBot
             totalAllTimeVCTime += timeElapsed;
 
             userStatsDays[GetIndexOfDay(DateTime.Now)].vCTime += timeElapsed;
-            myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"{usersFullName} left chat at {lastTimeLeftVC}. Increased chattime by {timeElapsed.ToString(@"dd\.hh\:mm\:ss")}"));
+            myCont.DIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"{usersFullName} left chat at {lastTimeLeftVC}. Increased chattime by {timeElapsed.ToString(@"dd\.hh\:mm\:ss")}"));
         }
 
         public Task RecordThisUserSentAMessage(SocketMessage message)
@@ -126,7 +128,7 @@ namespace DiscordUserStatsBot
 
             userStatsDays[GetIndexOfDay(DateTime.Now)].messagesSent++;
 
-            myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"{usersFullName} sent a message!"));
+            myCont.DIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"{usersFullName} sent a message!"));
 
             return Task.CompletedTask;
         }
@@ -136,7 +138,7 @@ namespace DiscordUserStatsBot
             //Future proofing XD
             if(dateToChange.Date > DateTime.Now)
             {
-                myCont.Log("You should not be searching for stat info on a day that has yet to occur...");
+                myCont.DIRef.LogRef.Log("You should not be searching for stat info on a day that has yet to occur...");
                 dateToChange = DateTime.Now.Date;
             }
 
@@ -166,6 +168,7 @@ namespace DiscordUserStatsBot
                 //move days over
                 int dayMoveTo = 0;
 
+                //scoots over existing day logs
                 for (int dayMoveFrom = (daysDifferenceLastEntryAndToday); dayMoveFrom < userStatsDays.Length;)
                 {
                     UserStatDay tempDay = userStatsDays[dayMoveFrom];
@@ -174,8 +177,15 @@ namespace DiscordUserStatsBot
                     dayMoveTo++;
                 }
 
+                if (daysDifferenceLastEntryAndToday >= userStatsDays.Length)
+                {
+                    //in this case the last entry made so long ago that need a whole new set of data
+                    userStatsDays[0].date = DateTime.Now.AddDays(-userStatsDays.Length);
+                    dayMoveTo = 1;
+                }
                 DateTime dTSetUp = userStatsDays[dayMoveTo - 1].date;
 
+                //adds fresh entries to remainder of list
                 for (; dayMoveTo < userStatsDays.Length; dayMoveTo++)
                 {
                     dTSetUp = dTSetUp.AddDays(1);
@@ -204,7 +214,7 @@ namespace DiscordUserStatsBot
         {
             if (pastNumberOfDays > userStatsDays.Length)
             {
-                myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $@"Beware: This StatTracker has only recorded the past {userStatsDays.Length} days."));
+                myCont.DIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $@"Beware: This StatTracker has only recorded the past {userStatsDays.Length} days."));
                 pastNumberOfDays = userStatsDays.Length;
             }
             //if # of days searching for exceeds # of days since this stat tracker got made, instead return average since stat tracker created or average since minimum days
@@ -217,11 +227,11 @@ namespace DiscordUserStatsBot
                     pastNumberOfDays = 1;
                 }
 
-                //myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"Number of days wanted is {pastNumberOfDays}"));
+                //myCont.DIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"Number of days wanted is {pastNumberOfDays}"));
 
-                if (pastNumberOfDays < myCont.userStatConfigRef.rankConfig.minAvgDays && myCont.userStatConfigRef.rankConfig.minAvgDays < (int)myCont.userStatConfigRef.rankConfig.rankTime)
+                if (pastNumberOfDays < myCont.DIRef.ConfigRef.rankConfig.minAvgDays && myCont.DIRef.ConfigRef.rankConfig.minAvgDays < (int)myCont.DIRef.ConfigRef.rankConfig.rankTime)
                 {
-                    pastNumberOfDays = myCont.userStatConfigRef.rankConfig.minAvgDays;
+                    pastNumberOfDays = myCont.DIRef.ConfigRef.rankConfig.minAvgDays;
                 }
             }
 
@@ -263,7 +273,7 @@ namespace DiscordUserStatsBot
         {
             if (pastNumberOfDays > userStatsDays.Length)
             {
-                myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $@"Beware: This StatTracker has only recorded the past {userStatsDays.Length} days."));
+                myCont.DIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $@"Beware: This StatTracker has only recorded the past {userStatsDays.Length} days."));
                 pastNumberOfDays = userStatsDays.Length;
             }
             //if # of days searching for exceeds # of days since this stat tracker got made, instead return total since stat tracker created
@@ -291,7 +301,7 @@ namespace DiscordUserStatsBot
         {
             if (pastNumberOfDays > userStatsDays.Length)
             {
-                myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $@"Beware: This StatTracker has only recorded the past {userStatsDays.Length} days."));
+                myCont.DIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $@"Beware: This StatTracker has only recorded the past {userStatsDays.Length} days."));
                 pastNumberOfDays = userStatsDays.Length;
             }
             //if # of days searching for exceeds # of days since this stat tracker got made, instead return total since stat tracker created
@@ -339,14 +349,14 @@ namespace DiscordUserStatsBot
         public int CompareTo(UserStatTracker other)
         {
             //rank by average messages
-            if (myCont.userStatConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.messages) && myCont.userStatConfigRef.rankConfig.rankBy.Equals(UserStatConfig.RankConfig.RankByType.average))
+            if (myCont.DIRef.ConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.messages) && myCont.DIRef.ConfigRef.rankConfig.rankBy.Equals(UserStatConfig.RankConfig.RankByType.average))
             {
-                if(this.AverageMessages((int)myCont.userStatConfigRef.rankConfig.rankTime) > other.AverageMessages((int)myCont.userStatConfigRef.rankConfig.rankTime))
+                if(this.AverageMessages((int)myCont.DIRef.ConfigRef.rankConfig.rankTime) > other.AverageMessages((int)myCont.DIRef.ConfigRef.rankConfig.rankTime))
                 {
                     //higher rank
                     return -1;
                 }
-                else if(this.AverageMessages((int)myCont.userStatConfigRef.rankConfig.rankTime) < other.AverageMessages((int)myCont.userStatConfigRef.rankConfig.rankTime))
+                else if(this.AverageMessages((int)myCont.DIRef.ConfigRef.rankConfig.rankTime) < other.AverageMessages((int)myCont.DIRef.ConfigRef.rankConfig.rankTime))
                 {
                     //lower rank
                     return 1;
@@ -358,13 +368,13 @@ namespace DiscordUserStatsBot
                 }
             }
             //rank by average voice chat time
-            else if (myCont.userStatConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.voiceChatTime) && myCont.userStatConfigRef.rankConfig.rankBy.Equals(UserStatConfig.RankConfig.RankByType.average))
+            else if (myCont.DIRef.ConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.voiceChatTime) && myCont.DIRef.ConfigRef.rankConfig.rankBy.Equals(UserStatConfig.RankConfig.RankByType.average))
             {
-                if (this.AverageChatTime((int)myCont.userStatConfigRef.rankConfig.rankTime) > other.AverageChatTime((int)myCont.userStatConfigRef.rankConfig.rankTime))
+                if (this.AverageChatTime((int)myCont.DIRef.ConfigRef.rankConfig.rankTime) > other.AverageChatTime((int)myCont.DIRef.ConfigRef.rankConfig.rankTime))
                 {
                     return -1;
                 }
-                else if (this.AverageChatTime((int)myCont.userStatConfigRef.rankConfig.rankTime) < other.AverageChatTime((int)myCont.userStatConfigRef.rankConfig.rankTime))
+                else if (this.AverageChatTime((int)myCont.DIRef.ConfigRef.rankConfig.rankTime) < other.AverageChatTime((int)myCont.DIRef.ConfigRef.rankConfig.rankTime))
                 {
                     return 1;
                 }
@@ -374,13 +384,13 @@ namespace DiscordUserStatsBot
                 }
             }
             //rank by total messages
-            else if (myCont.userStatConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.messages) && myCont.userStatConfigRef.rankConfig.rankBy.Equals(UserStatConfig.RankConfig.RankByType.total))
+            else if (myCont.DIRef.ConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.messages) && myCont.DIRef.ConfigRef.rankConfig.rankBy.Equals(UserStatConfig.RankConfig.RankByType.total))
             {
-                if (this.TotalMessages((int)myCont.userStatConfigRef.rankConfig.rankTime) > other.TotalMessages((int)myCont.userStatConfigRef.rankConfig.rankTime))
+                if (this.TotalMessages((int)myCont.DIRef.ConfigRef.rankConfig.rankTime) > other.TotalMessages((int)myCont.DIRef.ConfigRef.rankConfig.rankTime))
                 {
                     return -1;
                 }
-                else if (this.TotalMessages((int)myCont.userStatConfigRef.rankConfig.rankTime) < other.TotalMessages((int)myCont.userStatConfigRef.rankConfig.rankTime))
+                else if (this.TotalMessages((int)myCont.DIRef.ConfigRef.rankConfig.rankTime) < other.TotalMessages((int)myCont.DIRef.ConfigRef.rankConfig.rankTime))
                 {
                     return 1;
                 }
@@ -390,13 +400,13 @@ namespace DiscordUserStatsBot
                 }
             }
             //rank by total voice chat time
-            else if (myCont.userStatConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.voiceChatTime) && myCont.userStatConfigRef.rankConfig.rankBy.Equals(UserStatConfig.RankConfig.RankByType.total))
+            else if (myCont.DIRef.ConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.voiceChatTime) && myCont.DIRef.ConfigRef.rankConfig.rankBy.Equals(UserStatConfig.RankConfig.RankByType.total))
             {
-                if (this.TotalChatTime((int)myCont.userStatConfigRef.rankConfig.rankTime) > other.TotalChatTime((int)myCont.userStatConfigRef.rankConfig.rankTime))
+                if (this.TotalChatTime((int)myCont.DIRef.ConfigRef.rankConfig.rankTime) > other.TotalChatTime((int)myCont.DIRef.ConfigRef.rankConfig.rankTime))
                 {
                     return -1;
                 }
-                else if (this.TotalChatTime((int)myCont.userStatConfigRef.rankConfig.rankTime) < other.TotalChatTime((int)myCont.userStatConfigRef.rankConfig.rankTime))
+                else if (this.TotalChatTime((int)myCont.DIRef.ConfigRef.rankConfig.rankTime) < other.TotalChatTime((int)myCont.DIRef.ConfigRef.rankConfig.rankTime))
                 {
                     return 1;
                 }
@@ -406,7 +416,7 @@ namespace DiscordUserStatsBot
                 }
             }
             //rank by average both
-            if (myCont.userStatConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.msgAndVCT))
+            if (myCont.DIRef.ConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.msgAndVCT))
             {
                 //smaller number = higher rank
                 if ((this.messageRankPosition + this.vcTimeRankPosition) < (other.messageRankPosition + other.vcTimeRankPosition))

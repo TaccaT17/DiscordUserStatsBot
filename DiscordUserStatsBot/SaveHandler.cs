@@ -11,20 +11,43 @@ using Newtonsoft.Json;
 
 namespace DiscordUserStatsBot
 {
-    class SaveHandler
+    public sealed class SaveHandler
     {
+        private static readonly SaveHandler s = new SaveHandler();
+        static SaveHandler() { }
+        private SaveHandler() { }
+        public static SaveHandler S
+        {
+            get
+            {
+                return s;
+            }
+        }
+
         //VARIABLES
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
-        
+
         private string fileFolderPath;
+        private string FileFolderPath
+        {
+            get
+            {
+                if(fileFolderPath == null)
+                {
+                    fileFolderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + Path.DirectorySeparatorChar + @"saves"; //Gets path that .dll is in not path that .exe is in
+                }
+                return fileFolderPath;
+            }
+        }
+
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         //CONSTRUCTORS
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
-        public SaveHandler()
+        /*public SaveHandler()
         {
             fileFolderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + Path.DirectorySeparatorChar + @"saves"; //Gets path that .dll is in not path that .exe is in
-        }
+        }*/
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         #region FUNCTIONS
@@ -34,14 +57,14 @@ namespace DiscordUserStatsBot
         {
             string jsonDataString = JsonConvert.SerializeObject(dictionaryToSave, Formatting.Indented);
 
-            string saveFilePath = fileFolderPath + Path.DirectorySeparatorChar + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
+            string saveFilePath = FileFolderPath + Path.DirectorySeparatorChar + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
 
             File.WriteAllText(saveFilePath, jsonDataString);
         }
 
         public Dictionary<K, T> LoadDictionary<K, T>(out Dictionary<K, T> dictionaryToLoad, string nameOfSaveFile, SocketGuild guild)
         {
-            string saveFilePath = fileFolderPath + Path.DirectorySeparatorChar + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
+            string saveFilePath = FileFolderPath + Path.DirectorySeparatorChar + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
 
             if (File.Exists(saveFilePath))
             {
@@ -61,7 +84,7 @@ namespace DiscordUserStatsBot
         {
             string jsonDataString = JsonConvert.SerializeObject(arrayToSave, Formatting.Indented);
 
-            string saveFilePath = fileFolderPath + Path.DirectorySeparatorChar + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
+            string saveFilePath = FileFolderPath + Path.DirectorySeparatorChar + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
 
             File.WriteAllText(saveFilePath, jsonDataString);
 
@@ -70,7 +93,7 @@ namespace DiscordUserStatsBot
 
         public T[] LoadArray<T>(out T[] arrayToLoad, string nameOfSaveFile, SocketGuild guild)
         {
-            string saveFilePath = fileFolderPath + Path.DirectorySeparatorChar + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
+            string saveFilePath = FileFolderPath + Path.DirectorySeparatorChar + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
 
             if (File.Exists(saveFilePath))
             {
@@ -91,7 +114,7 @@ namespace DiscordUserStatsBot
         {
             string jsonDataString = JsonConvert.SerializeObject(objectToSave, Formatting.Indented);
 
-            string saveFilePath = fileFolderPath + Path.DirectorySeparatorChar + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
+            string saveFilePath = FileFolderPath + Path.DirectorySeparatorChar + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
 
             File.WriteAllText(saveFilePath, jsonDataString);
 
@@ -100,7 +123,7 @@ namespace DiscordUserStatsBot
 
         public void LoadObject<T>(out T objectToLoad, string nameOfSaveFile, SocketGuild guild)
         {
-            string saveFilePath = fileFolderPath + Path.DirectorySeparatorChar + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
+            string saveFilePath = FileFolderPath + Path.DirectorySeparatorChar + nameOfSaveFile + "_" + guild.Name + guild.Id.ToString() + ".json";
 
             if (File.Exists(saveFilePath))
             {

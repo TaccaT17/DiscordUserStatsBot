@@ -9,13 +9,8 @@ using System.Threading.Tasks;
 
 namespace DiscordUserStatsBot
 {
-
-    //Note: USE REST WHEN SENDING REQUEST, USE WEBSOCKET WHEN
-
-
-    class UserStatRoles
+    public class UserStatRoles : BotComponent
     {
-
         #region VARIABLES
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -35,16 +30,10 @@ namespace DiscordUserStatsBot
         [Newtonsoft.Json.JsonProperty]
         private List<ulong> rankedUsers; //messageRank, chatRank, totalRank;
 
-        UserStatsBotController myCont;
+        //UserStatsBotController dIRef.ContRef;
 
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
         #endregion
-
-        //Constructor
-        public UserStatRoles(UserStatsBotController myController)
-        {
-            myCont = myController;
-        }
 
         #region FUNCTIONS
         //---------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -62,7 +51,7 @@ namespace DiscordUserStatsBot
                 rankRoles[index] = new UserStatRole((ulong)0, defaultRoleNames[index], defaultRoleMemberAmount[index], defaultRoleColors[index], 0);
             }
 
-            myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), "Default Roles Created"));
+            dIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), "Default Roles Created"));
         }
 
         /// <summary>
@@ -71,13 +60,13 @@ namespace DiscordUserStatsBot
         /// <param name="guildRef"></param>
         public async void AssignRoles(SocketGuild guildRef)
         {
-            myCont.Log("Assigning Roles");
+            dIRef.LogRef.Log("Assigning Roles");
 
             //ensure permission
             if (!guildRef.CurrentUser.GuildPermissions.ManageRoles || 
                 !guildRef.CurrentUser.GuildPermissions.AddReactions)
             {
-                myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), "Can't assign roles because lacks permissions."));
+                dIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), "Can't assign roles because lacks permissions."));
                 return;
             }
 
@@ -89,14 +78,14 @@ namespace DiscordUserStatsBot
             if(rankedUsers == null)
             {
                 rankedUsers = new List<ulong>();
-                foreach(KeyValuePair<ulong, UserStatTracker> item in myCont.guildUserIDToStatIndex)
+                foreach(KeyValuePair<ulong, UserStatTracker> item in dIRef.ContRef.guildUserIDToStatIndex)
                 {
                     rankedUsers.Add(item.Key);
                 }
             }
 
             //ensure all recorded ids in rankedUsers list
-            foreach (KeyValuePair<ulong, UserStatTracker> item in myCont.guildUserIDToStatIndex)
+            foreach (KeyValuePair<ulong, UserStatTracker> item in dIRef.ContRef.guildUserIDToStatIndex)
             {
                 if (!(rankedUsers.Contains(item.Key)))
                 {
@@ -108,8 +97,9 @@ namespace DiscordUserStatsBot
             //if rankedUsers has userID that statTracker doesn't delete it
             for (int iD = rankedUsers.Count - 1; iD >= 0; iD--)
             {
-                if (!(myCont.guildUserIDToStatIndex.ContainsKey(rankedUsers[iD])))
+                if (!(dIRef.ContRef.guildUserIDToStatIndex.ContainsKey(rankedUsers[iD])))
                 {
+                    //Console.WriteLine("Doesn't have key");
                     //also remove any rank roles that user might have
                     SocketGuildUser guildUser = guildRef.GetUser(rankedUsers[iD]);
                     if(guildUser != null)
@@ -118,6 +108,10 @@ namespace DiscordUserStatsBot
                     }
 
                     rankedUsers.RemoveAt(iD);
+                }
+                else
+                {
+                    //Console.WriteLine("Does have key: " + rankedUsers[iD]);
                 }
             }
 
@@ -145,7 +139,7 @@ namespace DiscordUserStatsBot
                 //if position of this bot role is less than the role about to impact then skip this role
                 if(rankRoles[rankRole].position > maxBotRolePos)
                 {
-                    myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), $"BEWARE: Bot role not above generated RankRole: {rankRoles[rankRole].name}"));
+                    dIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), $"BEWARE: Bot role not above generated RankRole: {rankRoles[rankRole].name}"));
                     await guildRef.DefaultChannel.SendMessageAsync($"Beware: Bot role must be above '{rankRoles[rankRole].name}' role for bot to fully function.");
                     continue;
                 }
@@ -158,7 +152,7 @@ namespace DiscordUserStatsBot
                     }
                     if (guildRef.GetUser(rankedUsers[rankedUserIndex]) == null)
                     {
-                        myCont.Log( new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), "Failed to find guild user using SocketGuild.GetUser(ID)."));
+                        dIRef.LogRef.Log( new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), "Failed to find guild user using SocketGuild.GetUser(ID). ID: " + rankedUsers[rankedUserIndex]));
 
                         return;
                     }
@@ -209,7 +203,7 @@ namespace DiscordUserStatsBot
                     else
                     {
                         //don't apply roles to inactive members
-                        //myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), "This user is inactive therefore not applying a role."));
+                        //dIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), "This user is inactive therefore not applying a role."));
                         rankMemberAmountIteration--;
                     }
 
@@ -256,11 +250,11 @@ namespace DiscordUserStatsBot
         /// <returns></returns>
         private bool UserIsActive(ulong iD)
         {
-            if (myCont.inactiveUsersLoseAllRoles)
+            if (dIRef.ContRef.inactiveUsersLoseAllRoles)
             {
-                UserStatTracker stats = myCont.GetUserStats(iD);
+                UserStatTracker stats = dIRef.ContRef.GetUserStats(iD);
 
-                if (stats != null && (stats.TotalChatTime((int)myCont.userStatConfigRef.rankConfig.rankTime) > TimeSpan.Zero || stats.TotalMessages((int)myCont.userStatConfigRef.rankConfig.rankTime) > 0))
+                if (stats != null && (stats.TotalChatTime((int)dIRef.ConfigRef.rankConfig.rankTime) > TimeSpan.Zero || stats.TotalMessages((int)dIRef.ConfigRef.rankConfig.rankTime) > 0))
                 {
                     return true;
                 }
@@ -284,13 +278,13 @@ namespace DiscordUserStatsBot
             List<UserStatTracker> userStatTrackersList = new List<UserStatTracker>();
             for (int iD = 0; iD < rankedUsers.Count; iD++)
             {
-                userStatTrackersList.Add(myCont.guildUserIDToStatIndex[rankedUsers[iD]]);
+                userStatTrackersList.Add(dIRef.ContRef.guildUserIDToStatIndex[rankedUsers[iD]]);
             }
 
 
             //TODO: make this more efficient by calling recurring function (funciton calls itself)
             //if sorting by both messages and voice chat time
-            if (myCont.userStatConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.msgAndVCT))
+            if (dIRef.ConfigRef.rankConfig.rankType.Equals(UserStatConfig.RankConfig.RankType.msgAndVCT))
             {
                 //create list that is ranked by messages
                 //create list that is ranked by vctime
@@ -302,10 +296,10 @@ namespace DiscordUserStatsBot
                     sortedByVCTime.Add(userStatTrackersList[index]);
                 }
 
-                myCont.userStatConfigRef.rankConfig.rankType = UserStatConfig.RankConfig.RankType.messages;
+                dIRef.ConfigRef.rankConfig.rankType = UserStatConfig.RankConfig.RankType.messages;
                 sortedByMessages.Sort();
 
-                myCont.userStatConfigRef.rankConfig.rankType = UserStatConfig.RankConfig.RankType.voiceChatTime;
+                dIRef.ConfigRef.rankConfig.rankType = UserStatConfig.RankConfig.RankType.voiceChatTime;
                 sortedByVCTime.Sort();
 
                 for (int index = 0; index < userStatTrackersList.Count; index++)
@@ -315,7 +309,7 @@ namespace DiscordUserStatsBot
                     sortedByVCTime[index].vcTimeRankPosition = index;
                 }
 
-                myCont.userStatConfigRef.rankConfig.rankType = UserStatConfig.RankConfig.RankType.msgAndVCT;
+                dIRef.ConfigRef.rankConfig.rankType = UserStatConfig.RankConfig.RankType.msgAndVCT;
                 //now when userStatTrackerList sorts will have accurate data
             }
 
@@ -343,7 +337,7 @@ namespace DiscordUserStatsBot
                 {
                     Discord.Rest.RestRole tempRestRole = guildRef.CreateRoleAsync(rankRoles[index].name, null, rankRoles[index].color, true, true).Result;
 
-                    myCont.Log($"RankRole Created: {rankRoles[index].name}");
+                    dIRef.LogRef.Log($"RankRole Created: {rankRoles[index].name}");
 
                     //set roles ID to created discord role ID
                     rankRoles[index].Id = tempRestRole.Id;
@@ -368,7 +362,7 @@ namespace DiscordUserStatsBot
             }
             else
             {
-                myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), "Error: rankedUsers null"));
+                dIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), "Error: rankedUsers null"));
             }
 
             return rank;
@@ -392,7 +386,7 @@ namespace DiscordUserStatsBot
 
             if (guildRef.GetRole(rankRole.Id) == null)
             {
-                myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), "Error: No role in the guild with that ID."));
+                dIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Error, this.ToString(), "Error: No role in the guild with that ID."));
                 return null;
             }
 
@@ -454,16 +448,16 @@ namespace DiscordUserStatsBot
 
         public void SaveRankedUsers()
         {
-            myCont.saveHandlerRef.SaveObject(rankedUsers, nameof(rankedUsers), myCont.GuildRef);
+            SaveHandler.S.SaveObject(rankedUsers, nameof(rankedUsers), dIRef.GuildRef);
         }
 
         public void LoadRankedUsers()
         {
-            myCont.saveHandlerRef.LoadObject(out rankedUsers, nameof(rankedUsers), myCont.GuildRef);
+            SaveHandler.S.LoadObject(out rankedUsers, nameof(rankedUsers), dIRef.GuildRef);
             if(rankedUsers == null)
             {
                 rankedUsers = new List<ulong>();
-                foreach (KeyValuePair<ulong, UserStatTracker> item in myCont.guildUserIDToStatIndex)
+                foreach (KeyValuePair<ulong, UserStatTracker> item in dIRef.ContRef.guildUserIDToStatIndex)
                 {
                     rankedUsers.Add(item.Key);
                 }

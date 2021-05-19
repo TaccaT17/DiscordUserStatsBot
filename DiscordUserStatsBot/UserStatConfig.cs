@@ -6,47 +6,40 @@ using System.Text;
 
 namespace DiscordUserStatsBot
 {
-    class UserStatConfig
+    public class UserStatConfig : BotComponent
     {
         //rank config
         public RankConfig rankConfig;
 
-        private UserStatsBotController myCont;
-
-        public UserStatConfig(UserStatsBotController controller)
-        {
-            myCont = controller;
-        }
-
         public void DefaultRankConfig()
         {
             //by default ranks users by average messages and vcTime in the past month
-            rankConfig.rankType = UserStatConfig.RankConfig.RankType.msgAndVCT;
-            rankConfig.rankBy = UserStatConfig.RankConfig.RankByType.average;
-            rankConfig.rankTime = UserStatConfig.RankConfig.RankTimeType.month;
+            rankConfig.rankType = RankConfig.RankType.msgAndVCT;
+            rankConfig.rankBy = RankConfig.RankByType.average;
+            rankConfig.rankTime = RankConfig.RankTimeType.month;
             rankConfig.minAvgDays = ((int)rankConfig.rankTime / 2);
             rankConfig.initialized = true;
-            myCont.Log($@"RankConfig initialized");
+            dIRef.LogRef.Log($@"RankConfig initialized");
         }
 
         #region CHANGE CRITERIA
         //TODO: way to make these one function?
-        public void ChangeRankCriteria(UserStatConfig.RankConfig.RankType newRankType, UserStatsBotController contRef)
+        public void ChangeRankCriteria(RankConfig.RankType newRankType, UserStatsBotController contRef)
         {
             rankConfig.rankType = newRankType;
-            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig), contRef.GuildRef);
+            SaveHandler.S.SaveObject(rankConfig, nameof(rankConfig), dIRef.GuildRef);
         }
-        public void ChangeRankCriteria(UserStatConfig.RankConfig.RankByType newRankByType, UserStatsBotController contRef)
+        public void ChangeRankCriteria(RankConfig.RankByType newRankByType, UserStatsBotController contRef)
         {
             rankConfig.rankBy = newRankByType;
-            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig), contRef.GuildRef);
+            SaveHandler.S.SaveObject(rankConfig, nameof(rankConfig), dIRef.GuildRef);
         }
-        public void ChangeRankCriteria(UserStatConfig.RankConfig.RankTimeType newRankTimeType, UserStatsBotController contRef)
+        public void ChangeRankCriteria(RankConfig.RankTimeType newRankTimeType, UserStatsBotController contRef)
         {
             rankConfig.rankTime = newRankTimeType;
             rankConfig.minAvgDays = (int)rankConfig.rankTime / 2;
-            contRef.saveHandlerRef.SaveObject(rankConfig, nameof(rankConfig), contRef.GuildRef);
-            myCont.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"minAvgDays is {rankConfig.minAvgDays}"));
+            SaveHandler.S.SaveObject(rankConfig, nameof(rankConfig), dIRef.GuildRef);
+            dIRef.LogRef.Log(new Discord.LogMessage(Discord.LogSeverity.Debug, this.ToString(), $"minAvgDays is {rankConfig.minAvgDays}"));
         }
         #endregion
 

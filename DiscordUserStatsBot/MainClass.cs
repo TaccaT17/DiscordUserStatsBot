@@ -10,17 +10,15 @@ using System.Threading.Tasks;
 
 namespace DiscordUserStatsBot
 {
-
-    //current problem: changing rank criteria for one server changes it for all servers
-
     class MainClass
     {
 
         private static string filePath;
         private DiscordSocketClient client; //         <--------------------------------THIS IS YOUR REFERENCE TO EVERYTHING
+        
+        //For controlling instances of bot per guild
         private bool guildInstancesInitialized;
-
-        private List<UserStatsBotController> guildControllers;
+        private List<DI_Class> guildControllers;
 
         public static string FilePath
         {
@@ -49,7 +47,7 @@ namespace DiscordUserStatsBot
             client.Ready += BootUpBot; //Ready is fired when the bot comes online and is connected to discord
 
             //discord people/bots/objects have a "token" AKA ID that is a password/username
-            // not secure to hardcode token so instead will get it from saved file (under TomsDiscordBot->bin->Debug->netcoreapp3.1)
+            // not secure to hardcode token so instead will get it from saved file
             Console.WriteLine("token path: " + filePath);
 
             var token = File.ReadAllText(filePath + Path.DirectorySeparatorChar + @"token.txt");
@@ -57,7 +55,7 @@ namespace DiscordUserStatsBot
             await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();
 
-            guildControllers = new List<UserStatsBotController>();
+            guildControllers = new List<DI_Class>();
 
             client.JoinedGuild += SetUpNewGuildInstance;
 
@@ -90,9 +88,9 @@ namespace DiscordUserStatsBot
                 {
                     guild = guildE.Current;
 
-                    UserStatsBotController tempControllerRef = new UserStatsBotController(client, guild);
+                    DI_Class tempDIRef = new DI_Class(client, guild);
 
-                    guildControllers.Add(tempControllerRef);
+                    guildControllers.Add(tempDIRef);
                 }
 
                 guildInstancesInitialized = true;
@@ -103,33 +101,38 @@ namespace DiscordUserStatsBot
 
         private Task SetUpNewGuildInstance(SocketGuild newGuild)
         {
+            DI_Class tempDIRef = GuildHasExistingInstance(newGuild);
+
+            Console.WriteLine("tempDI: " + tempDIRef);
+
             //make sure doesn't already have instance
-            if (GuildHasExistingInstance(newGuild))
+            if (tempDIRef != null)
             {
+                //reset
+                tempDIRef.Reset(newGuild);
+
                 return Task.CompletedTask;
             }
 
-            UserStatsBotController tempControllerRef = new UserStatsBotController(client, newGuild);
+            tempDIRef = new DI_Class(client, newGuild);
 
-            tempControllerRef.commandHandlerRef.IntroMessage(newGuild);
+            tempDIRef.CommandHandRef.IntroMessage(newGuild);
 
             Log(new LogMessage(LogSeverity.Info, this.ToString(), $"     Created new guild instance for '{newGuild.Name}'"));
 
             return Task.CompletedTask;
         }
 
-        private bool GuildHasExistingInstance(SocketGuild guildToCheck)
+        private DI_Class GuildHasExistingInstance(SocketGuild guildToCheck)
         {
-            foreach (UserStatsBotController cont in guildControllers)
+            foreach (DI_Class dI in guildControllers)
             {
-                if (cont.GuildRef.Id.Equals(guildToCheck.Id))
+                if (dI.GuildRef.Id.Equals(guildToCheck.Id))
                 {
-                    return true;
+                    return dI;
                 }
             }
-
-            return false;
+            return null;
         }
-
     }
 }
